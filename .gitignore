@@ -2,4 +2,5 @@
 *.iml
 /configs/*.dev.yml
 target/*
+/configs/sense/sense_last_seen.dev.yml
 

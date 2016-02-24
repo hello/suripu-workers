@@ -2,13 +2,15 @@ package com.hello.suripu.workers.insights;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
-import com.hello.suripu.coredw.configuration.DynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-import com.yammer.dropwizard.db.DatabaseConfiguration;
+
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
+
+import io.dropwizard.db.DataSourceFactory;
+import io.dropwizard.db.DatabaseConfiguration;
 
 /**
  * Created by kingshy on 1/6/15.
@@ -17,23 +19,25 @@ public class InsightsGeneratorWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
-    @JsonProperty("common_db")
-    private DatabaseConfiguration commonDB = new DatabaseConfiguration();
-    public DatabaseConfiguration getCommonDB() { return commonDB; }
-
-    @Valid
-    @NotNull
     @JsonProperty("sensors_db")
-    private DatabaseConfiguration sensorsDB = new DatabaseConfiguration();
-    public DatabaseConfiguration getSensorsDB() {
+    private DataSourceFactory sensorsDB = new DataSourceFactory();
+    public DataSourceFactory getSensorsDB() {
         return sensorsDB;
     }
 
     @Valid
     @NotNull
+    @JsonProperty("common_db")
+    private DataSourceFactory commonDB = new DataSourceFactory();
+    public DataSourceFactory getCommonDB() {
+        return commonDB;
+    }
+
+    @Valid
+    @NotNull
     @JsonProperty("insights_db")
-    private DatabaseConfiguration insightsDB = new DatabaseConfiguration();
-    public DatabaseConfiguration getInsightsDB() {
+    private DataSourceFactory insightsDB = new DataSourceFactory();
+    public DataSourceFactory getInsightsDB() {
         return insightsDB;
     }
 

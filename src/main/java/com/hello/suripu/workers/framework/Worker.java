@@ -1,16 +1,18 @@
 package com.hello.suripu.workers.framework;
 
-import com.yammer.dropwizard.Service;
-import com.yammer.dropwizard.cli.Cli;
-import com.yammer.dropwizard.config.Bootstrap;
-import com.yammer.dropwizard.config.Configuration;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.config.LoggingFactory;
-import com.yammer.dropwizard.util.Generics;
+
+import io.dropwizard.Application;
+import io.dropwizard.Configuration;
+import io.dropwizard.cli.Cli;
+import io.dropwizard.logging.LoggingFactory;
+import io.dropwizard.setup.Bootstrap;
+import io.dropwizard.setup.Environment;
+import io.dropwizard.util.Generics;
+import io.dropwizard.util.JarLocation;
 
 public abstract class Worker<T extends Configuration> {
 
-    private class ShellService<T> extends Service {
+    private class ShellApplication<T> extends Application {
 
         @Override
         public void initialize(Bootstrap bootstrap) {
@@ -53,9 +55,10 @@ public abstract class Worker<T extends Configuration> {
      * @throws Exception if something goes wrong
      */
     public final void run(String[] arguments) throws Exception {
-        final Bootstrap<T> bootstrap = new Bootstrap<T>(new ShellService<T>());
+        final Bootstrap<T> bootstrap = new Bootstrap<T>(new ShellApplication<T>());
+
         initialize(bootstrap);
-        final Cli cli = new Cli(this.getClass(), bootstrap);
+        final Cli cli = new Cli(new JarLocation(getClass()), bootstrap, System.out, System.err);
         cli.run(arguments);
     }
 }

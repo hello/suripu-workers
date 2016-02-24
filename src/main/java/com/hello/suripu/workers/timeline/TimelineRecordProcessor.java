@@ -10,12 +10,14 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Optional;
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.api.ble.SenseCommandProtos;
-import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.models.TimelineFeedback;
-import com.hello.suripu.coredw.db.TimelineDAODynamoDB;
+import com.hello.suripu.coredw8.db.TimelineDAODynamoDB;
 import com.hello.suripu.core.flipper.FeatureFlipper;
 import com.hello.suripu.core.models.DeviceAccountPair;
 import com.hello.suripu.core.models.TimelineResult;
@@ -23,8 +25,7 @@ import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.processors.TimelineProcessor;
 import com.hello.suripu.core.util.DateTimeUtil;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
+
 import org.joda.time.DateTime;
 import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import org.slf4j.Logger;
@@ -37,7 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Created by pangwu on 1/26/15.
@@ -51,6 +53,7 @@ public class TimelineRecordProcessor extends HelloBaseRecordProcessor {
     private final DeviceReadDAO deviceDAO;
 
 
+    private final MetricRegistry metrics;
     private final Meter messagesProcessed;
     private final Meter timelinesSaved;
     private final Meter timelinesExpired;
@@ -64,22 +67,24 @@ public class TimelineRecordProcessor extends HelloBaseRecordProcessor {
                                    final DeviceReadDAO deviceDAO,
                                    final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
                                    final TimelineDAODynamoDB timelineDAODynamoDB,
-                                   final TimelineWorkerConfiguration configuration){
+                                   final TimelineWorkerConfiguration configuration,
+                                   final MetricRegistry metricRegistry){
 
         this.timelineProcessor = timelineProcessor;
         this.configuration = configuration;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.timelineDAODynamoDB = timelineDAODynamoDB;
         this.deviceDAO = deviceDAO;
+        this.metrics = metricRegistry;
 
-        this.messagesProcessed = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "messages", "messages-processed", TimeUnit.SECONDS);
-        this.timelinesSaved = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "timelines-saved", "timelines-saved", TimeUnit.SECONDS);
-        this.timelinesExpired = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "timelines-expired", "timelines-expired", TimeUnit.SECONDS);
-        this.timelineReadyToProcess = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "timelines-ready-to-process", "timelines-ready-to-process", TimeUnit.SECONDS);
-        this.emptyTimelineAfterProcess = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "empty-timeline", "empty-timeline", TimeUnit.SECONDS);
-        this.awsErrorCount = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "aws-error", "aws-errors", TimeUnit.SECONDS);
-        this.generalErrorCount = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "gen-error", "gen-errors", TimeUnit.SECONDS);
-        this.errorCount = Metrics.defaultRegistry().newMeter(TimelineRecordProcessor.class, "error", "errors", TimeUnit.SECONDS);
+        this.messagesProcessed = metrics.meter(name(TimelineRecordProcessor.class, "messages-processed"));
+        this.timelinesSaved = metrics.meter(name(TimelineRecordProcessor.class, "timelines-saved"));
+        this.timelinesExpired = metrics.meter(name(TimelineRecordProcessor.class, "timelines-expired"));
+        this.timelineReadyToProcess = metrics.meter(name(TimelineRecordProcessor.class, "timelines-ready-to-process"));
+        this.emptyTimelineAfterProcess = metrics.meter(name(TimelineRecordProcessor.class, "empty-timeline"));
+        this.awsErrorCount = metrics.meter(name(TimelineRecordProcessor.class, "aws-errors"));
+        this.generalErrorCount = metrics.meter(name(TimelineRecordProcessor.class, "gen-errors"));
+        this.errorCount = metrics.meter(name(TimelineRecordProcessor.class, "errors"));
     }
 
     @Override

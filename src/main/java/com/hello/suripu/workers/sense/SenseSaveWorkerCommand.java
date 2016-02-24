@@ -11,8 +11,12 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibC
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.DeviceDataDAO;
@@ -26,18 +30,19 @@ import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.metrics.RegexMetricPredicate;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.jdbi.DBIFactory;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.reporting.GraphiteReporter;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.setup.Environment;
 
 public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<SenseSaveWorkerConfiguration> {
 
@@ -65,13 +70,17 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String prefix = String.format("%s.%s.suripu-workers", apiKey, env);
+            final String prefix = String.format("%s.%s.suripu-workers-sensesave", apiKey, env);
 
-            final List<String> metrics = configuration.getGraphite().getIncludeMetrics();
-            final RegexMetricPredicate predicate = new RegexMetricPredicate(metrics);
-            final Joiner joiner = Joiner.on(", ");
-            LOGGER.info("Logging the following metrics: {}", joiner.join(metrics));
-            GraphiteReporter.enable(Metrics.defaultRegistry(), interval, TimeUnit.SECONDS, graphiteHostName, 2003, prefix, predicate);
+            final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
+
+            final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
+            reporter.start(interval, TimeUnit.SECONDS);
 
             LOGGER.info("Metrics enabled.");
         } else {
@@ -121,8 +130,9 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
         if (useDynamoDeviceData) {
             final AmazonDynamoDB deviceDataDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.DEVICE_DATA);
             deviceDataIngestDAO = new DeviceDataDAODynamoDB(deviceDataDynamoDB, tableNames.get(DynamoDBTableName.DEVICE_DATA));
-            factory = new SenseSaveDDBProcessorFactory(mergedUserInfoDynamoDB, deviceDataIngestDAO, configuration.getMaxRecords());
+            factory = new SenseSaveDDBProcessorFactory(mergedUserInfoDynamoDB, deviceDataIngestDAO, configuration.getMaxRecords(), environment.metrics());
         } else {
+
             final DBIFactory dbiFactory = new DBIFactory();
             final DBI commonDBI = dbiFactory.build(environment, configuration.getCommonDB(), "postgresql");
 
@@ -145,12 +155,13 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
             );
 
             factory = new SenseSaveProcessorFactory(
-                    deviceDAO,
-                    mergedUserInfoDynamoDB,
-                    sensorsViewsDynamoDB,
-                    deviceDataIngestDAO,
-                    configuration.getMaxRecords(),
-                    updateLastSeen
+                deviceDAO,
+                mergedUserInfoDynamoDB,
+                sensorsViewsDynamoDB,
+                deviceDataIngestDAO,
+                configuration.getMaxRecords(),
+                updateLastSeen,
+                environment.metrics()
             );
         }
 

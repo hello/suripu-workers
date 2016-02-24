@@ -9,13 +9,15 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionIn
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
-import com.yammer.dropwizard.config.Environment;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.List;
+
+import io.dropwizard.setup.Environment;
 
 public class ExampleWorker extends WorkerEnvironmentCommand<ExampleWorkerConfiguration>  {
 

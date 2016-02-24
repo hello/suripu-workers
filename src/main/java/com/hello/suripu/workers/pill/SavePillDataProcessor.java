@@ -10,6 +10,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.api.ble.SenseCommandProtos;
 import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.KeyStore;
@@ -21,8 +24,7 @@ import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeat;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -32,7 +34,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     private final static Logger LOGGER = LoggerFactory.getLogger(SavePillDataProcessor.class);
@@ -45,6 +48,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     private final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB; // will replace with interface as soon as we have validated this works
     private final Boolean savePillHeartbeat;
 
+    private MetricRegistry metrics;
     private final Meter messagesProcessed;
     private final Meter batchSaved;
 
@@ -54,7 +58,8 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                  final DeviceDAO deviceDAO,
                                  final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
                                  final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB,
-                                 final Boolean savePillHeartbeat) {
+                                 final Boolean savePillHeartbeat,
+                                 final MetricRegistry metrics) {
         this.pillDataIngestDAO = pillDataIngestDAO;
         this.batchSize = batchSize;
         this.pillKeyStore = pillKeyStore;
@@ -63,8 +68,9 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
         this.pillHeartBeatDAODynamoDB = pillHeartBeatDAODynamoDB;
         this.savePillHeartbeat = savePillHeartbeat;
 
-        this.messagesProcessed = Metrics.defaultRegistry().newMeter(pillDataIngestDAO.name(), "messages", "messages-processed", TimeUnit.SECONDS);
-        this.batchSaved = Metrics.defaultRegistry().newMeter(pillDataIngestDAO.name(), "batch", "batch-saved", TimeUnit.SECONDS);
+
+        this.messagesProcessed = metrics.meter(name(SavePillDataProcessor.class, "messages-processed"));
+        this.batchSaved = metrics.meter(name(SavePillDataProcessor.class, "batch-saved"));
     }
 
     @Override

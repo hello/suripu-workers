@@ -4,15 +4,17 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
@@ -40,30 +42,29 @@ import com.hello.suripu.core.db.colors.SenseColorDAO;
 import com.hello.suripu.core.db.colors.SenseColorDAOSQLImpl;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.db.util.PostgresIntegerArrayArgumentFactory;
-import com.hello.suripu.core.metrics.RegexMetricPredicate;
 import com.hello.suripu.core.processors.TimelineProcessor;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
-import com.hello.suripu.coredw.configuration.S3BucketConfiguration;
-import com.hello.suripu.coredw.db.SleepHmmDAODynamoDB;
-import com.hello.suripu.coredw.db.TimelineDAODynamoDB;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredw8.db.SleepHmmDAODynamoDB;
+import com.hello.suripu.coredw8.configuration.S3BucketConfiguration;
+import com.hello.suripu.coredw8.db.TimelineDAODynamoDB;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.db.ManagedDataSourceFactory;
-import com.yammer.dropwizard.jdbi.ImmutableListContainerFactory;
-import com.yammer.dropwizard.jdbi.ImmutableSetContainerFactory;
-import com.yammer.dropwizard.jdbi.OptionalContainerFactory;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.reporting.GraphiteReporter;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.List;
+import java.net.InetSocketAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.jdbi.ImmutableListContainerFactory;
+import io.dropwizard.jdbi.ImmutableSetContainerFactory;
+import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.setup.Environment;
 
 /**
  * Created by pangwu on 9/23/14.
@@ -79,17 +80,15 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
     protected void run(Environment environment, Namespace namespace, TimelineWorkerConfiguration configuration) throws Exception {
 
 
-        final ManagedDataSourceFactory managedDataSourceFactory = new ManagedDataSourceFactory();
-
-        final DBI commonDB = new DBI(managedDataSourceFactory.build(configuration.getCommonDB()));
-        final DBI sensorsDB = new DBI(managedDataSourceFactory.build(configuration.getSensorsDB()));
+        final DBIFactory factory = new DBIFactory();
+        final DBI commonDB = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
+        final DBI sensorsDB = factory.build(environment, configuration.getSensorsDB(), "postgresql-sensors");
 
         sensorsDB.registerArgumentFactory(new JodaArgumentFactory());
         sensorsDB.registerContainerFactory(new OptionalContainerFactory());
         sensorsDB.registerArgumentFactory(new PostgresIntegerArrayArgumentFactory());
         sensorsDB.registerContainerFactory(new ImmutableListContainerFactory());
         sensorsDB.registerContainerFactory(new ImmutableSetContainerFactory());
-
 
         commonDB.registerArgumentFactory(new JodaArgumentFactory());
         commonDB.registerContainerFactory(new OptionalContainerFactory());
@@ -103,7 +102,9 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
         final UserTimelineTestGroupDAO userTimelineTestGroupDAO = commonDB.onDemand(UserTimelineTestGroupDAOImpl.class);
 
         final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
-        final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider);
+        final ClientConfiguration clientConfig = new ClientConfiguration().withConnectionTimeout(200).withMaxErrorRetry(1).withMaxConnections(100);
+        final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfig, configuration.getDynamoDBConfiguration());
+        final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.getDynamoDBConfiguration().tables();
 
         final ClientConfiguration clientConfiguration = new ClientConfiguration();
         clientConfiguration.withConnectionTimeout(200); // in ms
@@ -151,11 +152,11 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
                 configuration.getSleepStatsVersion()
         );
 
-        final AmazonDynamoDB deviceDataDAODynamoDBClient = new AmazonDynamoDBClient(awsCredentialsProvider, clientConfiguration);
-        final DeviceDataDAODynamoDB deviceDataDAODynamoDB = new DeviceDataDAODynamoDB(deviceDataDAODynamoDBClient, configuration.getDeviceDataConfiguration().getTableName());
+        final AmazonDynamoDB deviceDataDAODynamoDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.DEVICE_DATA, DeviceDataDAODynamoDB.class);
+        final DeviceDataDAODynamoDB deviceDataDAODynamoDB = new DeviceDataDAODynamoDB(deviceDataDAODynamoDBClient, tableNames.get(DynamoDBTableName.DEVICE_DATA));
 
-        final AmazonDynamoDB pillDataDAODynamoDBClient = new AmazonDynamoDBClient(awsCredentialsProvider, clientConfiguration);
-        final PillDataDAODynamoDB pillDataDAODynamoDB = new PillDataDAODynamoDB(pillDataDAODynamoDBClient, configuration.getPillDataConfiguration().getTableName());
+        final AmazonDynamoDB pillDataDAODynamoDBClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.PILL_DATA);
+        final PillDataDAODynamoDB pillDataDAODynamoDB = new PillDataDAODynamoDB(pillDataDAODynamoDBClient, tableNames.get(DynamoDBTableName.PILL_DATA));
 
         if(configuration.getMetricsEnabled()) {
             final String graphiteHostName = configuration.getGraphite().getHost();
@@ -163,13 +164,17 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String prefix = String.format("%s.%s.suripu-workers", apiKey, env);
+            final String prefix = String.format("%s.%s.suripu-workers-timeline", apiKey, env);
 
-            final List<String> metrics = configuration.getGraphite().getIncludeMetrics();
-            final RegexMetricPredicate predicate = new RegexMetricPredicate(metrics);
-            final Joiner joiner = Joiner.on(", ");
-            LOGGER.info("Logging the following metrics: {}", joiner.join(metrics));
-            GraphiteReporter.enable(Metrics.defaultRegistry(), interval, TimeUnit.SECONDS, graphiteHostName, 2003, prefix, predicate);
+            final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
+
+            final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
+            reporter.start(interval, TimeUnit.SECONDS);
 
             LOGGER.info("Metrics enabled.");
         } else {
@@ -179,9 +184,10 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
         final AmazonDynamoDB dynamoDBTimelineClient = dynamoDBClientFactory.getForEndpoint(
                 configuration.getDynamoDBConfiguration().endpoints().get(DynamoDBTableName.TIMELINE));
         final TimelineDAODynamoDB timelineDAODynamoDB = new TimelineDAODynamoDB(
-                dynamoDBTimelineClient,
-                configuration.getDynamoDBConfiguration().tables().get(DynamoDBTableName.TIMELINE),
-                configuration.getMaxCacheRefreshDay());
+            dynamoDBTimelineClient,
+            configuration.getDynamoDBConfiguration().tables().get(DynamoDBTableName.TIMELINE),
+            configuration.getMaxCacheRefreshDay(),
+            environment.metrics());
 
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
@@ -223,12 +229,13 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST);
 
 
-        final IRecordProcessorFactory factory = new TimelineRecordProcessorFactory(timelineProcessor,
-                deviceDAO,
-                mergedUserInfoDynamoDB,
-                timelineDAODynamoDB,
-                configuration);
-        final Worker worker = new Worker(factory, kinesisConfig);
+        final IRecordProcessorFactory processFactory = new TimelineRecordProcessorFactory(timelineProcessor,
+            deviceDAO,
+            mergedUserInfoDynamoDB,
+            timelineDAODynamoDB,
+            configuration,
+            environment.metrics());
+        final Worker worker = new Worker(processFactory, kinesisConfig);
         worker.run();
     }
 }

@@ -13,6 +13,10 @@ import com.google.common.collect.Sets;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.annotation.Timed;
 import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.db.SensorsViewsDynamoDB;
 import com.hello.suripu.core.db.WifiInfoDAO;
@@ -20,19 +24,20 @@ import com.hello.suripu.core.models.DeviceData;
 import com.hello.suripu.core.models.WifiInfo;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 import com.hello.suripu.core.util.SenseProcessorUtils;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.annotation.Timed;
-import com.yammer.metrics.core.Meter;
+import com.hello.suripu.workers.sense.SenseSaveDDBProcessor;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 
 public class SenseLastSeenProcessor extends HelloBaseRecordProcessor {
@@ -49,6 +54,7 @@ public class SenseLastSeenProcessor extends HelloBaseRecordProcessor {
     private final WifiInfoDAO wifiInfoDAO;
     private final SensorsViewsDynamoDB sensorsViewsDynamoDB;
 
+    private final MetricRegistry metrics;
     private final Meter messagesProcessed;
     private final Meter capacity;
 
@@ -60,13 +66,17 @@ public class SenseLastSeenProcessor extends HelloBaseRecordProcessor {
 
     private String shardId = "";
 
-    public SenseLastSeenProcessor(final Integer maxRecords, final WifiInfoDAO wifiInfoDAO, final SensorsViewsDynamoDB sensorsViewsDynamoDB) {
+    public SenseLastSeenProcessor(final Integer maxRecords,
+                                  final WifiInfoDAO wifiInfoDAO,
+                                  final SensorsViewsDynamoDB sensorsViewsDynamoDB,
+                                  final MetricRegistry metricRegistry) {
         this.maxRecords = maxRecords;
         this.wifiInfoDAO = wifiInfoDAO;
         this.sensorsViewsDynamoDB = sensorsViewsDynamoDB;
+        this.metrics = metricRegistry;
 
-        this.messagesProcessed = Metrics.defaultRegistry().newMeter(SenseLastSeenProcessor.class, "messages", "messages-processed", TimeUnit.SECONDS);
-        this.capacity = Metrics.defaultRegistry().newMeter(SenseLastSeenProcessor.class, "capacity", "capacity", TimeUnit.SECONDS);
+        this.messagesProcessed = metrics.meter(name(SenseLastSeenProcessor.class, "messages-processed"));
+        this.capacity = metrics.meter(name(SenseLastSeenProcessor.class, "capacity"));
     }
 
     @Override
@@ -76,7 +86,7 @@ public class SenseLastSeenProcessor extends HelloBaseRecordProcessor {
     }
 
     private void createNewBloomFilter() {
-        this.bloomFilter = BloomFilter.create(Funnels.stringFunnel(), BLOOM_FILTER_CAPACITY, BLOOM_FILTER_ERROR_RATE);
+        this.bloomFilter = BloomFilter.create(Funnels.stringFunnel(Charset.defaultCharset()), BLOOM_FILTER_CAPACITY, BLOOM_FILTER_ERROR_RATE);
         this.lastBloomFilterCreated = DateTime.now(DateTimeZone.UTC);
     }
 

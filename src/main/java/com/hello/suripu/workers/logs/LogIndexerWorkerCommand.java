@@ -1,6 +1,7 @@
 package com.hello.suripu.workers.logs;
 
 import com.amazonaws.AmazonServiceException;
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -13,33 +14,37 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibC
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.core.configuration.DynamoDBTableName;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
-import com.hello.suripu.core.metrics.RegexMetricPredicate;
+import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import com.yammer.dropwizard.cli.ConfiguredCommand;
-import com.yammer.dropwizard.config.Bootstrap;
-import com.yammer.dropwizard.db.ManagedDataSourceFactory;
-import com.yammer.dropwizard.jdbi.ImmutableListContainerFactory;
-import com.yammer.dropwizard.jdbi.ImmutableSetContainerFactory;
-import com.yammer.dropwizard.jdbi.OptionalContainerFactory;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.reporting.GraphiteReporter;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.List;
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
-public class LogIndexerWorkerCommand extends ConfiguredCommand<LogIndexerWorkerConfiguration> {
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.jdbi.ImmutableListContainerFactory;
+import io.dropwizard.jdbi.ImmutableSetContainerFactory;
+import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.setup.Environment;
+
+public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexerWorkerConfiguration> {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(LogIndexerWorkerCommand.class);
 
@@ -48,11 +53,17 @@ public class LogIndexerWorkerCommand extends ConfiguredCommand<LogIndexerWorkerC
     }
 
     @Override
-    protected void run(final Bootstrap<LogIndexerWorkerConfiguration> bootstrap, final Namespace namespace, final LogIndexerWorkerConfiguration configuration) throws Exception {
+    protected void run(Environment environment, Namespace namespace, final LogIndexerWorkerConfiguration configuration) throws Exception {
+
+        final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
         final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
+        final ClientConfiguration clientConfig = new ClientConfiguration().withConnectionTimeout(200).withMaxErrorRetry(1).withMaxConnections(100);
+        final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfig, configuration.dynamoDBConfiguration());
 
-        init(configuration, awsCredentialsProvider);
+        final AmazonDynamoDB senseEventsDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.SENSE_EVENTS, SenseEventsDAO.class);
+        final SenseEventsDAO senseEventsDAO = new SenseEventsDAO(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
 
+        init(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
 
         if(configuration.getMetricsEnabled()) {
             final String graphiteHostName = configuration.getGraphite().getHost();
@@ -60,13 +71,17 @@ public class LogIndexerWorkerCommand extends ConfiguredCommand<LogIndexerWorkerC
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String prefix = String.format("%s.%s.suripu-workers", apiKey, env);
+            final String prefix = String.format("%s.%s.suripu-workers-logindexer", apiKey, env);
 
-            final List<String> metrics = configuration.getGraphite().getIncludeMetrics();
-            final RegexMetricPredicate predicate = new RegexMetricPredicate(metrics);
-            final Joiner joiner = Joiner.on(", ");
-            LOGGER.info("Logging the following metrics: {}", joiner.join(metrics));
-            GraphiteReporter.enable(Metrics.defaultRegistry(), interval, TimeUnit.SECONDS, graphiteHostName, 2003, prefix, predicate);
+            final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
+
+            final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
+            reporter.start(interval, TimeUnit.SECONDS);
 
             LOGGER.info("Metrics enabled.");
         } else {
@@ -91,44 +106,43 @@ public class LogIndexerWorkerCommand extends ConfiguredCommand<LogIndexerWorkerC
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST);
 
-        final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider);
-        final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForEndpoint(configuration.getFeaturesDynamoDBConfiguration().getEndpoint());
         final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
-        final FeatureStore featureStore = new FeatureStore(featureDynamoDB, "features", featureNamespace);
+        final AmazonDynamoDB featuresDynamoDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.FEATURES, FeatureStore.class);
+        final FeatureStore featureStore = new FeatureStore(
+            featuresDynamoDBClient,
+            tableNames.get(DynamoDBTableName.FEATURES),
+            featureNamespace
+        );
 
-        final ManagedDataSourceFactory managedDataSourceFactory = new ManagedDataSourceFactory();
-        final DBI commonDB = new DBI(managedDataSourceFactory.build(configuration.getCommonDBConfiguration()));
+        final DBIFactory factory = new DBIFactory();
+        final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
 
-        commonDB.registerContainerFactory(new OptionalContainerFactory());
-        commonDB.registerContainerFactory(new ImmutableListContainerFactory());
-        commonDB.registerContainerFactory(new ImmutableSetContainerFactory());
-        commonDB.registerArgumentFactory(new JodaArgumentFactory());
+        commonDBI.registerContainerFactory(new OptionalContainerFactory());
+        commonDBI.registerContainerFactory(new ImmutableListContainerFactory());
+        commonDBI.registerContainerFactory(new ImmutableSetContainerFactory());
+        commonDBI.registerArgumentFactory(new JodaArgumentFactory());
 
-
-        final OnBoardingLogDAO onBoardingLogDAO = commonDB.onDemand(OnBoardingLogDAO.class);
-
-
+        final OnBoardingLogDAO onBoardingLogDAO = commonDBI.onDemand(OnBoardingLogDAO.class);
 
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
-        final IRecordProcessorFactory factory = new LogIndexerProcessorFactory(configuration,
-                amazonDynamoDBClientFactory,
-                onBoardingLogDAO);
-        final Worker worker = new Worker(factory, kinesisConfig);
+        final IRecordProcessorFactory processorFactory = new LogIndexerProcessorFactory(configuration,
+            dynamoDBClientFactory,
+            onBoardingLogDAO,
+            environment.metrics()
+        );
+        final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }
 
 
-    protected void init(final LogIndexerWorkerConfiguration configuration, final AWSCredentialsProvider awsCredentialsProvider) {
-        final AmazonDynamoDB amazonDynamoDB = new AmazonDynamoDBClient(awsCredentialsProvider);
-        amazonDynamoDB.setEndpoint(configuration.getSenseEventsDynamoDBConfiguration().getEndpoint());
-        final String tableName = configuration.getSenseEventsDynamoDBConfiguration().getTableName();
+    protected void init(final AmazonDynamoDB senseEventsDBClient, final String tableName) {
         try {
-            amazonDynamoDB.describeTable(tableName);
+            senseEventsDBClient.describeTable(tableName);
             LOGGER.info("{} already exists.", tableName);
         } catch (AmazonServiceException exception) {
-            final CreateTableResult result = SenseEventsDAO.createTable(tableName, amazonDynamoDB);
+            final CreateTableResult result = SenseEventsDAO.createTable(tableName, senseEventsDBClient);
             final TableDescription description = result.getTableDescription();
             LOGGER.info("{}: {}", tableName, description.getTableStatus());
         }

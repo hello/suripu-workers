@@ -7,51 +7,44 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.RatioGauge;
 import com.hello.suripu.api.logging.LoggingProtos;
 import com.hello.suripu.core.db.TimelineAnalyticsDAO;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.util.RatioGauge;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 public class TimelineLogProcessor extends HelloBaseRecordProcessor {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(TimelineLogProcessor.class);
     private final TimelineAnalyticsDAO timelineAnalyticsDAO;
 
+    private MetricRegistry metrics;
     private final Meter timelineLogsReceived;
     private final Meter successfulTimelineLogInsertions;
     private final RatioGauge ratioOfSuccessfulInsertionsToReceived;
 
     public TimelineLogProcessor(final TimelineAnalyticsDAO timelineAnalyticsDAO) {
         this.timelineAnalyticsDAO = timelineAnalyticsDAO;
-        this.timelineLogsReceived = Metrics.defaultRegistry()
-                .newMeter(TimelineLogProcessor.class, "received", "timeline-logs", TimeUnit.SECONDS);
-        this.successfulTimelineLogInsertions= Metrics.defaultRegistry()
-                .newMeter(TimelineLogProcessor.class, "inserted", "timeline-logs", TimeUnit.SECONDS);
-        this.ratioOfSuccessfulInsertionsToReceived = new RatioGauge() {
+        this.timelineLogsReceived = metrics.meter(name(TimelineLogProcessor.class, "received"));
+        this.successfulTimelineLogInsertions = metrics.meter(name(TimelineLogProcessor.class, "inserted"));
+        this.ratioOfSuccessfulInsertionsToReceived = metrics.register(name(TimelineLogProcessor.class, "inserted-per-received"), new RatioGauge() {
             @Override
-            protected double getNumerator() {
-                return successfulTimelineLogInsertions.oneMinuteRate();
+            public Ratio getRatio() {
+                return Ratio.of(successfulTimelineLogInsertions.getOneMinuteRate(),
+                    timelineLogsReceived.getOneMinuteRate());
             }
-
-            @Override
-            protected double getDenominator() {
-                return timelineLogsReceived.oneMinuteRate();
-            }
-        };
-        Metrics.defaultRegistry().newGauge(
-                TimelineLogProcessor.class,
-                "inserted-per-received",
-                "timeline-logs",
-                ratioOfSuccessfulInsertionsToReceived);
+        });
     }
 
     public static TimelineLogProcessor create(final TimelineAnalyticsDAO timelineAnalyticsDAO) {

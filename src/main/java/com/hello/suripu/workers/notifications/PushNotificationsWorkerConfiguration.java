@@ -2,24 +2,25 @@ package com.hello.suripu.workers.notifications;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Sets;
-import com.hello.suripu.coredw.configuration.DynamoDBConfiguration;
+import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.core.configuration.PushNotificationsConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 
-import com.yammer.dropwizard.db.DatabaseConfiguration;
+
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.Set;
 
+import io.dropwizard.db.DataSourceFactory;
+
 public class PushNotificationsWorkerConfiguration extends WorkerConfiguration {
     @Valid
     @NotNull
     @JsonProperty("common_db")
-    private DatabaseConfiguration commonDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getCommonDB() {
+    private DataSourceFactory commonDB = new DataSourceFactory();
+    public DataSourceFactory getCommonDB() {
         return commonDB;
     }
 
@@ -41,31 +42,12 @@ public class PushNotificationsWorkerConfiguration extends WorkerConfiguration {
         return pushNotificationsConfiguration;
     }
 
-
     @Valid
     @NotNull
-    @JsonProperty("user_info_db")
-    private DynamoDBConfiguration alarmInfoDynamoDBConfiguration;
-    public DynamoDBConfiguration getAlarmInfoDynamoDBConfiguration(){
-        return this.alarmInfoDynamoDBConfiguration;
-    }
-
-
-
-    @Valid
-    @NotNull
-    @JsonProperty("preferences_db")
-    private DynamoDBConfiguration accountPreferences;
-    public DynamoDBConfiguration getAccountPreferences(){
-        return this.accountPreferences;
-    }
-
-    @Valid
-    @NotNull
-    @JsonProperty("features_db")
-    private DynamoDBConfiguration featuresDynamoDBConfiguration;
-    public DynamoDBConfiguration getFeaturesDynamoDBConfiguration(){
-        return this.featuresDynamoDBConfiguration;
+    @JsonProperty("dynamodb")
+    private NewDynamoDBConfiguration dynamoDBConfiguration;
+    public NewDynamoDBConfiguration dynamoDBConfiguration(){
+        return dynamoDBConfiguration;
     }
 
     @Valid

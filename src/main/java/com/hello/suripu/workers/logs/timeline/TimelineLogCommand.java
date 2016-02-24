@@ -9,7 +9,7 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibC
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.FeatureStore;
@@ -18,14 +18,16 @@ import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.db.util.PostgresIntegerArrayArgumentFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.jdbi.DBIFactory;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.setup.Environment;
 
 public class TimelineLogCommand extends WorkerEnvironmentCommand<TimelineLogConfiguration> {
 
@@ -39,7 +41,6 @@ public class TimelineLogCommand extends WorkerEnvironmentCommand<TimelineLogConf
     protected void run(Environment environment, Namespace namespace, TimelineLogConfiguration configuration) throws Exception {
         final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
         final String workerId = InetAddress.getLocalHost().getCanonicalHostName();
-
         final ImmutableMap<QueueName, String> queueNames = configuration.getQueues();
 
         LOGGER.debug("{}", queueNames);
@@ -63,8 +64,8 @@ public class TimelineLogCommand extends WorkerEnvironmentCommand<TimelineLogConf
 
 
 
-        final DBIFactory dbiFactory = new DBIFactory();
-        final DBI commonDB = dbiFactory.build(environment, configuration.getCommonDB(), "postgresql");
+        final DBIFactory factory = new DBIFactory();
+        final DBI commonDB = factory.build(environment, configuration.getCommonDB(), "postgresql");
         commonDB.registerArgumentFactory(new JodaArgumentFactory());
         commonDB.registerArgumentFactory(new PostgresIntegerArrayArgumentFactory());
 
@@ -73,8 +74,8 @@ public class TimelineLogCommand extends WorkerEnvironmentCommand<TimelineLogConf
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
-        final IRecordProcessorFactory factory = new TimelineLogProcessorFactory(timelineAnalyticsDAO);
-        final Worker worker = new Worker(factory, kinesisConfig);
+        final IRecordProcessorFactory processorFactory = new TimelineLogProcessorFactory(timelineAnalyticsDAO);
+        final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }
 }

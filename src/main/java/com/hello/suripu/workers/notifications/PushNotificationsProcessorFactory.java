@@ -1,13 +1,19 @@
 package com.hello.suripu.workers.notifications;
 
+import com.google.common.collect.ImmutableMap;
+
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClient;
 import com.hello.suripu.core.ObjectGraphRoot;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.core.configuration.DynamoDBTableName;
+import com.hello.suripu.core.preferences.AccountPreferencesDAO;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
@@ -15,61 +21,66 @@ import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.NotificationSubscriptionsReadDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import com.yammer.dropwizard.db.ManagedDataSource;
-import com.yammer.dropwizard.db.ManagedDataSourceFactory;
-import com.yammer.dropwizard.jdbi.ImmutableListContainerFactory;
-import com.yammer.dropwizard.jdbi.ImmutableSetContainerFactory;
-import com.yammer.dropwizard.jdbi.OptionalContainerFactory;
-import com.yammer.dropwizard.jdbi.args.OptionalArgumentFactory;
+
 import org.skife.jdbi.v2.DBI;
+
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.jdbi.ImmutableListContainerFactory;
+import io.dropwizard.jdbi.ImmutableSetContainerFactory;
+import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.jdbi.args.OptionalArgumentFactory;
+import io.dropwizard.setup.Environment;
 
 public class PushNotificationsProcessorFactory implements IRecordProcessorFactory {
 
     private final PushNotificationsWorkerConfiguration configuration;
     private final AWSCredentialsProvider awsCredentialsProvider;
+    private final Environment environment;
 
-    public PushNotificationsProcessorFactory(final PushNotificationsWorkerConfiguration configuration, final AWSCredentialsProvider awsCredentialsProvider) {
+    public PushNotificationsProcessorFactory(Environment environment, final PushNotificationsWorkerConfiguration configuration, final AWSCredentialsProvider awsCredentialsProvider) {
         this.configuration = configuration;
         this.awsCredentialsProvider = awsCredentialsProvider;
+        this.environment = environment;
     }
 
     @Override
     public IRecordProcessor createProcessor()  {
 
-        try {
+        final DBIFactory factory = new DBIFactory();
+        final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
 
-            final ManagedDataSourceFactory managedDataSourceFactory = new ManagedDataSourceFactory();
-            final ManagedDataSource commonDataSource = managedDataSourceFactory.build(configuration.getCommonDB());
+        commonDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getCommonDB().getDriverClass()));
+        commonDBI.registerContainerFactory(new ImmutableListContainerFactory());
+        commonDBI.registerContainerFactory(new ImmutableSetContainerFactory());
+        commonDBI.registerContainerFactory(new OptionalContainerFactory());
+        commonDBI.registerArgumentFactory(new JodaArgumentFactory());
 
-            final DBI commonSensor = new DBI(commonDataSource);
-            commonSensor.registerArgumentFactory(new OptionalArgumentFactory(configuration.getCommonDB().getDriverClass()));
-            commonSensor.registerContainerFactory(new ImmutableListContainerFactory());
-            commonSensor.registerContainerFactory(new ImmutableSetContainerFactory());
-            commonSensor.registerContainerFactory(new OptionalContainerFactory());
-            commonSensor.registerArgumentFactory(new JodaArgumentFactory());
+        final NotificationSubscriptionsReadDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsReadDAO.class);
+        final AmazonSNS amazonSNS = new AmazonSNSClient(awsCredentialsProvider);
+        final MobilePushNotificationProcessor pushNotificationProcessor = new MobilePushNotificationProcessor(amazonSNS, notificationSubscriptionsDAO);
 
-            final NotificationSubscriptionsReadDAO notificationSubscriptionsDAO = commonSensor.onDemand(NotificationSubscriptionsReadDAO.class);
-            final AmazonSNS amazonSNS = new AmazonSNSClient(awsCredentialsProvider);
-            final MobilePushNotificationProcessor pushNotificationProcessor = new MobilePushNotificationProcessor(amazonSNS, notificationSubscriptionsDAO);
+        final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
+        final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
+        final ClientConfiguration clientConfig = new ClientConfiguration().withConnectionTimeout(200).withMaxErrorRetry(1).withMaxConnections(100);
+        final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfig, configuration.dynamoDBConfiguration());
 
-            final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider);
-            final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForEndpoint(configuration.getFeaturesDynamoDBConfiguration().getEndpoint());
-            final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
-            final FeatureStore featureStore = new FeatureStore(featureDynamoDB, "features", featureNamespace);
+        final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
+        final AmazonDynamoDB featuresDynamoDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.FEATURES, FeatureStore.class);
+        final FeatureStore featureStore = new FeatureStore(
+            featuresDynamoDBClient,
+            tableNames.get(DynamoDBTableName.FEATURES),
+            featureNamespace
+        );
 
-            final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
-            ObjectGraphRoot.getInstance().init(workerRolloutModule);
+        final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
+        ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
-            final AmazonDynamoDB mergedUserInfoDynamoDBClient = amazonDynamoDBClientFactory.getForEndpoint(configuration.getAlarmInfoDynamoDBConfiguration().getEndpoint());
-            final MergedUserInfoDynamoDB mergedUserInfoDynamoDB = new MergedUserInfoDynamoDB(mergedUserInfoDynamoDBClient, configuration.getAlarmInfoDynamoDBConfiguration().getTableName());
+        final AmazonDynamoDB mergedUserInfoDynamoDBClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.ALARM_INFO);
+        final MergedUserInfoDynamoDB mergedUserInfoDynamoDB = new MergedUserInfoDynamoDB(mergedUserInfoDynamoDBClient, configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.ALARM_INFO));
 
-            final AmazonDynamoDB accountPreferencesDynamoDBClient = amazonDynamoDBClientFactory.getForEndpoint(configuration.getAccountPreferences().getEndpoint());
-            final AccountPreferencesDynamoDB accountPreferencesDynamoDB = AccountPreferencesDynamoDB.create(accountPreferencesDynamoDBClient, configuration.getAccountPreferences().getTableName());
+        final AmazonDynamoDB accountPreferencesDynamoDBClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.PREFERENCES);
+        final AccountPreferencesDynamoDB accountPreferencesDynamoDB = AccountPreferencesDynamoDB.create(accountPreferencesDynamoDBClient, tableNames.get(DynamoDBTableName.PREFERENCES));
 
-            return new PushNotificationsProcessor(pushNotificationProcessor, mergedUserInfoDynamoDB, accountPreferencesDynamoDB, configuration.getActiveHours());
-
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e.getMessage());
-        }
+        return new PushNotificationsProcessor(pushNotificationProcessor, mergedUserInfoDynamoDB, accountPreferencesDynamoDB, configuration.getActiveHours());
     }
 }

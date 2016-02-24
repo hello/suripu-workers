@@ -8,8 +8,8 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibC
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.configuration.QueueName;
-import com.yammer.dropwizard.cli.ConfiguredCommand;
-import com.yammer.dropwizard.config.Bootstrap;
+import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 
 import org.slf4j.Logger;
@@ -17,7 +17,9 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 
-public class PushNotificationsWorkerCommand extends ConfiguredCommand<PushNotificationsWorkerConfiguration>{
+import io.dropwizard.setup.Environment;
+
+public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<PushNotificationsWorkerConfiguration> {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(PushNotificationsWorkerCommand.class);
 
@@ -26,7 +28,7 @@ public class PushNotificationsWorkerCommand extends ConfiguredCommand<PushNotifi
     }
 
     @Override
-    protected void run(final Bootstrap<PushNotificationsWorkerConfiguration> bootstrap, final Namespace namespace, final PushNotificationsWorkerConfiguration configuration) throws Exception {
+    protected void run(Environment environment, Namespace namespace, final PushNotificationsWorkerConfiguration configuration) throws Exception {
 
         final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
 
@@ -46,7 +48,7 @@ public class PushNotificationsWorkerCommand extends ConfiguredCommand<PushNotifi
         kinesisConfig.withMaxRecords(configuration.getMaxRecords());
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST); // only moving forward, we don't want to replay push notifications
-        final IRecordProcessorFactory factory = new PushNotificationsProcessorFactory(configuration, awsCredentialsProvider);
+        final IRecordProcessorFactory factory = new PushNotificationsProcessorFactory(environment, configuration, awsCredentialsProvider);
         final Worker worker = new Worker(factory, kinesisConfig);
         worker.run();
 

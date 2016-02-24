@@ -1,12 +1,13 @@
 package com.hello.suripu.workers.framework;
 
-import com.yammer.dropwizard.cli.ConfiguredCommand;
-import com.yammer.dropwizard.config.Bootstrap;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.validation.Validator;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 
-public abstract class WorkerEnvironmentCommand<T extends WorkerConfiguration> extends ConfiguredCommand<T>{
+import io.dropwizard.cli.ConfiguredCommand;
+import io.dropwizard.setup.Bootstrap;
+import io.dropwizard.setup.Environment;
+
+public abstract class WorkerEnvironmentCommand<T extends WorkerConfiguration> extends ConfiguredCommand<T> {
 
 
     protected WorkerEnvironmentCommand(final String name, final String description) {
@@ -15,11 +16,11 @@ public abstract class WorkerEnvironmentCommand<T extends WorkerConfiguration> ex
 
     @Override
     protected void run(Bootstrap<T> bootstrap, Namespace namespace, T configuration) throws Exception {
-        final Environment environment = new Environment(bootstrap.getName(),
-                configuration,
-                bootstrap.getObjectMapperFactory().copy(),
-                new Validator());
-        bootstrap.runWithBundles(configuration, environment);
+        final Environment environment = new Environment(bootstrap.getApplication().getName(),
+            bootstrap.getObjectMapper(),
+            bootstrap.getValidatorFactory().getValidator(),
+            bootstrap.getMetricRegistry(),
+            bootstrap.getClassLoader());
         run(environment, namespace, configuration);
     }
 

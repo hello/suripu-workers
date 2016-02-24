@@ -10,9 +10,13 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibC
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.db.DeviceDataDAODynamoDB;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.AccountDAO;
@@ -29,30 +33,29 @@ import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.TrackerMotionDAO;
 import com.hello.suripu.core.db.TrendsInsightsDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
-import com.hello.suripu.core.metrics.RegexMetricPredicate;
 import com.hello.suripu.core.preferences.AccountPreferencesDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.processors.insights.LightData;
 import com.hello.suripu.core.processors.insights.WakeStdDevData;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import com.yammer.dropwizard.config.Environment;
-import com.yammer.dropwizard.db.ManagedDataSource;
-import com.yammer.dropwizard.db.ManagedDataSourceFactory;
-import com.yammer.dropwizard.jdbi.ImmutableListContainerFactory;
-import com.yammer.dropwizard.jdbi.ImmutableSetContainerFactory;
-import com.yammer.dropwizard.jdbi.OptionalContainerFactory;
-import com.yammer.dropwizard.jdbi.args.OptionalArgumentFactory;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.reporting.GraphiteReporter;
+
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.jdbi.ImmutableListContainerFactory;
+import io.dropwizard.jdbi.ImmutableSetContainerFactory;
+import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.jdbi.args.OptionalArgumentFactory;
+import io.dropwizard.setup.Environment;
 
 /**
  * Created by kingshy on 1/6/15.
@@ -66,11 +69,12 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
 
     @Override
     protected void run(Environment environment, Namespace namespace, InsightsGeneratorWorkerConfiguration configuration) throws Exception {
-        // postgres setup
-        final ManagedDataSourceFactory managedDataSourceFactory = new ManagedDataSourceFactory();
-        final ManagedDataSource commonDBDataSource = managedDataSourceFactory.build(configuration.getCommonDB());
 
-        final DBI commonDBI = new DBI(commonDBDataSource);
+        final DBIFactory factory = new DBIFactory();
+        final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
+        final DBI sensorDBI = factory.build(environment, configuration.getSensorsDB(), "postgresql-sensors");
+        final DBI insightsDBI = factory.build(environment, configuration.getInsightsDB(), "postgresql-insights");
+
         commonDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getCommonDB().getDriverClass()));
         commonDBI.registerContainerFactory(new ImmutableListContainerFactory());
         commonDBI.registerContainerFactory(new ImmutableSetContainerFactory());
@@ -80,8 +84,7 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
         final AccountDAO accountDAO = commonDBI.onDemand(AccountDAOImpl.class);
         final DeviceDAO deviceDAO = commonDBI.onDemand(DeviceDAO.class);
 
-        final ManagedDataSource sensorDataSource = managedDataSourceFactory.build(configuration.getSensorsDB());
-        final DBI sensorDBI = new DBI(sensorDataSource);
+
         sensorDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getSensorsDB().getDriverClass()));
         sensorDBI.registerContainerFactory(new ImmutableListContainerFactory());
         sensorDBI.registerContainerFactory(new ImmutableSetContainerFactory());
@@ -92,8 +95,6 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
         final DeviceDataDAO deviceDataDAO = sensorDBI.onDemand(DeviceDataDAO.class);
         final TrackerMotionDAO trackerMotionDAO = sensorDBI.onDemand(TrackerMotionDAO.class);
 
-        final ManagedDataSource insightsDataSource = managedDataSourceFactory.build(configuration.getInsightsDB());
-        final DBI insightsDBI = new DBI(insightsDataSource);
         insightsDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getInsightsDB().getDriverClass()));
         insightsDBI.registerContainerFactory(new ImmutableListContainerFactory());
         insightsDBI.registerContainerFactory(new ImmutableSetContainerFactory());
@@ -110,15 +111,17 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String hostName = InetAddress.getLocalHost().getHostName();
+            final String prefix = String.format("%s.%s.suripu-workers-insights", apiKey, env);
 
-            final String prefix = String.format("%s.%s.%s", apiKey, env, hostName);
+            final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
 
-            final List<String> metrics = configuration.getGraphite().getIncludeMetrics();
-            final RegexMetricPredicate predicate = new RegexMetricPredicate(metrics);
-            final Joiner joiner = Joiner.on(", ");
-            LOGGER.info("Logging the following metrics: {}", joiner.join(metrics));
-            GraphiteReporter.enable(Metrics.defaultRegistry(), interval, TimeUnit.SECONDS, graphiteHostName, 2003, prefix, predicate);
+            final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
+            reporter.start(interval, TimeUnit.SECONDS);
 
             LOGGER.info("Metrics enabled.");
         } else {
@@ -188,7 +191,7 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
         final LightData lightData = new LightData(); // lights global distribution
         final WakeStdDevData wakeStdDevData = new WakeStdDevData();
 
-        final IRecordProcessorFactory factory = new InsightsGeneratorFactory(
+        final IRecordProcessorFactory processorFactory = new InsightsGeneratorFactory(
                 accountDAO,
                 deviceDataDAO,
                 deviceDataDAODynamoDB,
@@ -203,7 +206,7 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
                 wakeStdDevData,
                 accountPreferencesDynamoDB,
                 calibrationDAO);
-        final Worker worker = new Worker(factory, kinesisConfig);
+        final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }
 

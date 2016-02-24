@@ -2,6 +2,7 @@ package com.hello.suripu.workers.alarm;
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.PillDataDAODynamoDB;
 import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
@@ -21,6 +22,7 @@ public class AlarmRecordProcessorFactory implements IRecordProcessorFactory {
     private final PillDataDAODynamoDB pillDataDAODynamoDB;
     private final AlarmWorkerConfiguration configuration;
     private final Map<String, DateTime> senseIdLastProcessed;
+    private final MetricRegistry metricRegistry;
 
 
     public AlarmRecordProcessorFactory(
@@ -29,7 +31,8 @@ public class AlarmRecordProcessorFactory implements IRecordProcessorFactory {
             final SmartAlarmLoggerDynamoDB smartAlarmLoggerDynamoDB,
             final PillDataDAODynamoDB pillDataDAODynamoDB,
             final AlarmWorkerConfiguration configuration,
-            final Map<String, DateTime> senseIdLastProcessed) {
+            final Map<String, DateTime> senseIdLastProcessed,
+            final MetricRegistry metrics) {
 
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.pillDataDAODynamoDB = pillDataDAODynamoDB;
@@ -37,6 +40,7 @@ public class AlarmRecordProcessorFactory implements IRecordProcessorFactory {
         this.smartAlarmLoggerDynamoDB = smartAlarmLoggerDynamoDB;
         this.configuration = configuration;
         this.senseIdLastProcessed = senseIdLastProcessed;
+        this.metricRegistry = metrics;
     }
 
 
@@ -47,6 +51,8 @@ public class AlarmRecordProcessorFactory implements IRecordProcessorFactory {
                 this.smartAlarmLoggerDynamoDB,
                 this.pillDataDAODynamoDB,
                 this.configuration,
-                this.senseIdLastProcessed);
+                this.senseIdLastProcessed,
+                this.metricRegistry
+            );
     }
 }

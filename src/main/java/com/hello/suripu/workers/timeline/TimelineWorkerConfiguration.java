@@ -1,16 +1,16 @@
 package com.hello.suripu.workers.timeline;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.coredw.configuration.DynamoDBConfiguration;
 import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
-import com.hello.suripu.coredw.configuration.S3BucketConfiguration;
+import com.hello.suripu.coredw8.configuration.S3BucketConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-import com.yammer.dropwizard.db.DatabaseConfiguration;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
+
+import io.dropwizard.db.DataSourceFactory;
 
 /**
  * Created by pangwu on 1/26/15.
@@ -31,18 +31,16 @@ public class TimelineWorkerConfiguration extends WorkerConfiguration {
     @Valid
     @NotNull
     @JsonProperty("sensors_db")
-    private DatabaseConfiguration sensorsDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getSensorsDB() {
+    private DataSourceFactory sensorsDB = new DataSourceFactory();
+    public DataSourceFactory getSensorsDB() {
         return sensorsDB;
     }
 
     @Valid
     @NotNull
     @JsonProperty("common_db")
-    private DatabaseConfiguration commonDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getCommonDB() {
+    private DataSourceFactory commonDB = new DataSourceFactory();
+    public DataSourceFactory getCommonDB() {
         return commonDB;
     }
 
@@ -139,15 +137,6 @@ public class TimelineWorkerConfiguration extends WorkerConfiguration {
         return this.sleepStatsVersion;
     }
 
-    @Valid
-    @NotNull
-    @JsonProperty("dynamodb")
-    private NewDynamoDBConfiguration dynamoDBConfiguration;
-
-    public NewDynamoDBConfiguration getDynamoDBConfiguration(){
-        return dynamoDBConfiguration;
-    }
-
     @Min(50)
     @Max(200)
     @JsonProperty("user_info_max_read_capacity_sec")
@@ -158,9 +147,11 @@ public class TimelineWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
-    @JsonProperty("device_data")
-    private DynamoDBConfiguration deviceDataConfiguration;
-    public DynamoDBConfiguration getDeviceDataConfiguration() { return this.deviceDataConfiguration; }
+    @JsonProperty("dynamodb")
+    private NewDynamoDBConfiguration dynamoDBConfiguration;
+    public NewDynamoDBConfiguration getDynamoDBConfiguration(){
+        return dynamoDBConfiguration;
+    }
 
     @Valid
     @NotNull
@@ -174,9 +165,4 @@ public class TimelineWorkerConfiguration extends WorkerConfiguration {
     private S3BucketConfiguration timelineSeedModelConfiguration;
     public S3BucketConfiguration getTimelineSeedModelConfiguration() { return timelineSeedModelConfiguration; }
 
-    @Valid
-    @NotNull
-    @JsonProperty("pill_data")
-    private DynamoDBConfiguration pillDataConfiguration;
-    public DynamoDBConfiguration getPillDataConfiguration() { return this.pillDataConfiguration; }
 }

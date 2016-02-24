@@ -7,17 +7,18 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.collect.Lists;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.annotation.Timed;
 import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.db.DeviceDataIngestDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.models.DeviceData;
 import com.hello.suripu.core.util.SenseProcessorUtils;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.annotation.Timed;
-import com.yammer.metrics.core.Meter;
-import com.yammer.metrics.core.Timer;
-import com.yammer.metrics.core.TimerContext;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -27,6 +28,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Created by jakepiccolo on 11/4/15.
@@ -40,6 +43,7 @@ public class SenseSaveDDBProcessor extends HelloBaseRecordProcessor {
     private final MergedUserInfoDynamoDB mergedInfoDynamoDB;
     private final Integer maxRecords;
 
+    private MetricRegistry metrics;
     private final Meter messagesProcessed;
     private final Meter batchSaved;
     private final Meter batchSaveFailures;
@@ -50,17 +54,21 @@ public class SenseSaveDDBProcessor extends HelloBaseRecordProcessor {
 
     private String shardId = "";
 
-    public SenseSaveDDBProcessor(final MergedUserInfoDynamoDB mergedInfoDynamoDB, final DeviceDataIngestDAO deviceDataDAO, final Integer maxRecords) {
+    public SenseSaveDDBProcessor(final MergedUserInfoDynamoDB mergedInfoDynamoDB,
+                                 final DeviceDataIngestDAO deviceDataDAO,
+                                 final Integer maxRecords,
+                                 final MetricRegistry metrics) {
         this.mergedInfoDynamoDB = mergedInfoDynamoDB;
         this.deviceDataDAO = deviceDataDAO;
         this.maxRecords = maxRecords;
+        this.metrics = metrics;
 
-        this.messagesProcessed = Metrics.defaultRegistry().newMeter(deviceDataDAO.name(), "messages", "messages-processed", TimeUnit.SECONDS);
-        this.batchSaved = Metrics.defaultRegistry().newMeter(deviceDataDAO.name(), "batch", "batch-saved", TimeUnit.SECONDS);
-        this.batchSaveFailures = Metrics.defaultRegistry().newMeter(deviceDataDAO.name(), "batch-failure", "batch-save-failure", TimeUnit.SECONDS);
-        this.clockOutOfSync = Metrics.defaultRegistry().newMeter(deviceDataDAO.name(), "clock", "clock-out-of-sync", TimeUnit.SECONDS);
-        this.fetchTimezones = Metrics.defaultRegistry().newTimer(deviceDataDAO.name(), "fetch-timezones");
-        this.capacity = Metrics.defaultRegistry().newMeter(deviceDataDAO.name(), "capacity", "capacity", TimeUnit.SECONDS);
+        this.messagesProcessed = metrics.meter(name(SenseSaveDDBProcessor.class, "messages-processed"));
+        this.batchSaved = metrics.meter(name(SenseSaveDDBProcessor.class, "batch-saved"));
+        this.batchSaveFailures = metrics.meter(name(SenseSaveDDBProcessor.class, "batch-save-failure"));
+        this.clockOutOfSync = metrics.meter(name(SenseSaveDDBProcessor.class, "clock-out-of-sync"));
+        this.fetchTimezones = metrics.timer("fetch-timezones");
+        this.capacity = metrics.meter(name(SenseSaveDDBProcessor.class, "capacity"));
     }
 
     @Override
@@ -91,7 +99,7 @@ public class SenseSaveDDBProcessor extends HelloBaseRecordProcessor {
             }
 
             final Map<Long, DateTimeZone> timezonesByUser;
-            final TimerContext context = fetchTimezones.time();
+            final Timer.Context context = fetchTimezones.time();
             try {
                 timezonesByUser = SenseProcessorUtils.getTimezonesByUser(
                         deviceName, batchPeriodicDataWorker, accounts, mergedInfoDynamoDB, hasKinesisTimezonesEnabled(deviceName));

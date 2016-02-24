@@ -2,11 +2,12 @@ package com.hello.suripu.workers.timeline;
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
-import com.hello.suripu.core.db.DeviceDAO;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
-import com.hello.suripu.coredw.db.TimelineDAODynamoDB;
+
 import com.hello.suripu.core.processors.TimelineProcessor;
+import com.hello.suripu.coredw8.db.TimelineDAODynamoDB;
 
 /**
  * Created by pangwu on 9/23/14.
@@ -18,26 +19,30 @@ public class TimelineRecordProcessorFactory implements IRecordProcessorFactory {
     private final TimelineWorkerConfiguration configuration;
     private final TimelineDAODynamoDB timelineDAODynamoDB;
     private final DeviceReadDAO deviceDAO;
+    private final MetricRegistry metricRegistry;
 
     public TimelineRecordProcessorFactory(final TimelineProcessor timelineProcessor,
                                           final DeviceReadDAO deviceDAO,
                                           final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
                                           final TimelineDAODynamoDB timelineDAODynamoDB,
-                                          final TimelineWorkerConfiguration configuration) {
+                                          final TimelineWorkerConfiguration configuration,
+                                          final MetricRegistry metricRegistry) {
         this.timelineProcessor = timelineProcessor;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.configuration = configuration;
         this.timelineDAODynamoDB = timelineDAODynamoDB;
         this.deviceDAO = deviceDAO;
+        this.metricRegistry = metricRegistry;
     }
 
 
     @Override
     public IRecordProcessor createProcessor() {
         return new TimelineRecordProcessor(this.timelineProcessor,
-                this.deviceDAO,
-                this.mergedUserInfoDynamoDB,
-                this.timelineDAODynamoDB,
-                this.configuration);
+            this.deviceDAO,
+            this.mergedUserInfoDynamoDB,
+            this.timelineDAODynamoDB,
+            this.configuration,
+            this.metricRegistry);
     }
 }

@@ -1,9 +1,9 @@
 package com.hello.suripu.workers.alarm;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.coredw.configuration.DynamoDBConfiguration;
+import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-import com.yammer.dropwizard.db.DatabaseConfiguration;
+
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
@@ -56,58 +56,11 @@ public class AlarmWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
-    @JsonProperty("ring_time_db")
-    private DynamoDBConfiguration ringTimeDBConfiguration;
-    public DynamoDBConfiguration getRingTimeDBConfiguration(){
-        return this.ringTimeDBConfiguration;
+    @JsonProperty("dynamodb")
+    private NewDynamoDBConfiguration dynamoDBConfiguration;
+    public NewDynamoDBConfiguration getDynamoDBConfiguration(){
+        return dynamoDBConfiguration;
     }
-
-    @Valid
-    @NotNull
-    @JsonProperty("timezone_history_db")
-    private DynamoDBConfiguration timeZoneHistoryDBConfiguration;
-    public DynamoDBConfiguration getTimeZoneHistoryDBConfiguration(){
-        return this.timeZoneHistoryDBConfiguration;
-    }
-
-    @Valid
-    @NotNull
-    @JsonProperty("alarm_db")
-    private DynamoDBConfiguration alarmDBConfiguration;
-    public DynamoDBConfiguration getAlarmDBConfiguration(){
-        return this.alarmDBConfiguration;
-    }
-
-    @Valid
-    @NotNull
-    @JsonProperty("alarm_info_db")
-    private DynamoDBConfiguration alarmInfoDynamoDBConfiguration;
-    public DynamoDBConfiguration getAlarmInfoDynamoDBConfiguration(){
-        return this.alarmInfoDynamoDBConfiguration;
-    }
-
-    @Valid
-    @NotNull
-    @JsonProperty("smart_alarm_log_db")
-    private DynamoDBConfiguration smartAlarmLogDBConfiguration;
-    public DynamoDBConfiguration getSmartAlarmLogDBConfiguration(){
-        return this.smartAlarmLogDBConfiguration;
-    }
-
-
-    @Valid
-    @NotNull
-    @JsonProperty("features_db")
-    private DynamoDBConfiguration featuresDynamoDBConfiguration;
-    public DynamoDBConfiguration getFeaturesDynamoDBConfiguration(){
-        return this.featuresDynamoDBConfiguration;
-    }
-
-    @Valid
-    @NotNull
-    @JsonProperty("pill_data_db")
-    private DynamoDBConfiguration pillDataDynamoDBConfiguration;
-    public DynamoDBConfiguration getPillDataDynamoDBConfiguration() { return this.pillDataDynamoDBConfiguration; }
 
 
     @Valid

@@ -3,30 +3,28 @@ package com.hello.suripu.workers.pill;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-import com.yammer.dropwizard.db.DatabaseConfiguration;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
+
+import io.dropwizard.db.DataSourceFactory;
 
 public class PillWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
     @JsonProperty("sensors_db")
-    private DatabaseConfiguration sensorDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getSensorDB() {
-        return sensorDB;
+    private DataSourceFactory sensorsDB = new DataSourceFactory();
+    public DataSourceFactory getSensorsDB() {
+        return sensorsDB;
     }
-
 
     @Valid
     @NotNull
     @JsonProperty("common_db")
-    private DatabaseConfiguration commonDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getCommonDB() {
+    private DataSourceFactory commonDB = new DataSourceFactory();
+    public DataSourceFactory getCommonDB() {
         return commonDB;
     }
 
@@ -54,7 +52,6 @@ public class PillWorkerConfiguration extends WorkerConfiguration {
     @NotNull
     @JsonProperty("dynamodb")
     private NewDynamoDBConfiguration dynamoDBConfiguration;
-
     public NewDynamoDBConfiguration dynamoDBConfiguration(){
         return dynamoDBConfiguration;
     }

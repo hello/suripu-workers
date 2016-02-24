@@ -2,39 +2,37 @@ package com.hello.suripu.workers.sense;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
-import com.hello.suripu.coredw.configuration.RedisConfiguration;
+import com.hello.suripu.coredw8.configuration.RedisConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-import com.yammer.dropwizard.db.DatabaseConfiguration;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
 
+import io.dropwizard.db.DataSourceFactory;
+
 public class SenseSaveWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
-    @JsonProperty("common_db")
-    private DatabaseConfiguration commonDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getCommonDB() {
-        return commonDB;
+    @JsonProperty("sensors_db")
+    private DataSourceFactory sensorsDB = new DataSourceFactory();
+    public DataSourceFactory getSensorsDB() {
+        return sensorsDB;
     }
 
     @Valid
     @NotNull
-    @JsonProperty("sensors_db")
-    private DatabaseConfiguration sensorsDB = new DatabaseConfiguration();
-
-    public DatabaseConfiguration getSensorsDB() {
-        return sensorsDB;
+    @JsonProperty("common_db")
+    private DataSourceFactory commonDB = new DataSourceFactory();
+    public DataSourceFactory getCommonDB() {
+        return commonDB;
     }
 
     @Valid
     @NotNull
     @JsonProperty("dynamodb")
     private NewDynamoDBConfiguration dynamoDBConfiguration;
-
     public NewDynamoDBConfiguration dynamoDBConfiguration(){
         return dynamoDBConfiguration;
     }

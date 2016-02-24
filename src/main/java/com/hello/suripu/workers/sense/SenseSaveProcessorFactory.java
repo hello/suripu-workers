@@ -2,6 +2,7 @@ package com.hello.suripu.workers.sense;
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.core.db.DeviceDataIngestDAO;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
@@ -14,6 +15,7 @@ public class SenseSaveProcessorFactory implements IRecordProcessorFactory {
     private final DeviceDataIngestDAO deviceDataDAO;
     private final Integer maxRecords;
     private final boolean updateLastSeen;
+    private final MetricRegistry metricRegistry;
 
     public SenseSaveProcessorFactory(
             final DeviceReadDAO deviceDAO,
@@ -21,17 +23,19 @@ public class SenseSaveProcessorFactory implements IRecordProcessorFactory {
             final SensorsViewsDynamoDB sensorsViewsDynamoDB,
             final DeviceDataIngestDAO deviceDataDAO,
             final Integer maxRecords,
-            final boolean updateLastSeen) {
+            final boolean updateLastSeen,
+            final MetricRegistry metricRegistry) {
         this.deviceDAO = deviceDAO;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.sensorsViewsDynamoDB = sensorsViewsDynamoDB;
         this.deviceDataDAO = deviceDataDAO;
         this.maxRecords = maxRecords;
         this.updateLastSeen = updateLastSeen;
+        this.metricRegistry = metricRegistry;
     }
 
     @Override
     public IRecordProcessor createProcessor() {
-        return new SenseSaveProcessor(deviceDAO, mergedUserInfoDynamoDB, deviceDataDAO, sensorsViewsDynamoDB, maxRecords, updateLastSeen);
+        return new SenseSaveProcessor(deviceDAO, mergedUserInfoDynamoDB, deviceDataDAO, sensorsViewsDynamoDB, maxRecords, updateLastSeen, metricRegistry);
     }
 }

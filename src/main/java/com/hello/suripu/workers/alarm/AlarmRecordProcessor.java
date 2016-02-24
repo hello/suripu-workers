@@ -6,6 +6,9 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorC
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Histogram;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.PillDataDAODynamoDB;
@@ -13,8 +16,6 @@ import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
 import com.hello.suripu.core.db.SmartAlarmLoggerDynamoDB;
 import com.hello.suripu.core.processors.RingProcessor;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Histogram;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 import org.slf4j.Logger;
@@ -24,6 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 /**
  * Created by pangwu on 9/23/14.
@@ -37,6 +40,7 @@ public class AlarmRecordProcessor extends HelloBaseRecordProcessor {
     private final PillDataDAODynamoDB pillDataDAODynamoDB;
     private final AlarmWorkerConfiguration configuration;
 
+    private final MetricRegistry metrics;
     private final Histogram recordAgesMinutes;
     private final Histogram alarmUpdateLatencyHistogram;
 
@@ -47,7 +51,8 @@ public class AlarmRecordProcessor extends HelloBaseRecordProcessor {
                                 final SmartAlarmLoggerDynamoDB smartAlarmLoggerDynamoDB,
                                 final PillDataDAODynamoDB pillDataDAODynamoDB,
                                 final AlarmWorkerConfiguration configuration,
-                                final Map<String, DateTime> senseIdLastProcessed){
+                                final Map<String, DateTime> senseIdLastProcessed,
+                                final MetricRegistry metricRegistry){
 
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.scheduledRingTimeHistoryDAODynamoDB = scheduledRingTimeHistoryDAODynamoDB;
@@ -57,11 +62,12 @@ public class AlarmRecordProcessor extends HelloBaseRecordProcessor {
         this.configuration = configuration;
 
         this.senseIdLastProcessed = senseIdLastProcessed;
+        this.metrics = metricRegistry;
 
         // Create a histogram of the ages of records in minutes, biased towards newer values.
-        this.recordAgesMinutes = Metrics.defaultRegistry().newHistogram(AlarmRecordProcessor.class, "records", "record-age-minutes", true);
+        this.recordAgesMinutes = metrics.histogram(name(AlarmRecordProcessor.class, "record-age-minutes"));
         // Histogram of the time delta in ms from the last time a given senseId was processed by this worker.
-        this.alarmUpdateLatencyHistogram = Metrics.defaultRegistry().newHistogram(AlarmRecordProcessor.class, "alarms", "alarm-update-latency-millis", true);
+        this.alarmUpdateLatencyHistogram = metrics.histogram(name(AlarmRecordProcessor.class, "alarm-update-latency-millis"));
     }
 
     @Override

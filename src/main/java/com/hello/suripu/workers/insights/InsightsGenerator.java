@@ -7,6 +7,8 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Optional;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.annotation.Timed;
 import com.hello.suripu.api.ble.SenseCommandProtos;
 import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.AccountReadDAO;
@@ -16,7 +18,7 @@ import com.hello.suripu.core.models.Account;
 import com.hello.suripu.core.models.DeviceAccountPair;
 import com.hello.suripu.core.processors.InsightProcessor;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.yammer.metrics.annotation.Timed;
+
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

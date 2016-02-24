@@ -7,16 +7,19 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorC
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.protobuf.InvalidProtocolBufferException;
+
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.api.logging.LoggingProtos;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
-import com.yammer.metrics.Metrics;
-import com.yammer.metrics.core.Meter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+
+import static com.codahale.metrics.MetricRegistry.name;
 
 public class LogIndexerProcessor implements IRecordProcessor {
 
@@ -27,22 +30,27 @@ public class LogIndexerProcessor implements IRecordProcessor {
 
     private final Meter structuredLogs;
     private final Meter onboardingLogs;
+    private final MetricRegistry metrics;
 
     private LogIndexerProcessor(
                                 final LogIndexer<LoggingProtos.BatchLogMessage> senseStructuredLogsIndexer,
-                                final LogIndexer<LoggingProtos.BatchLogMessage> onBoardingLogIndexer) {
+                                final LogIndexer<LoggingProtos.BatchLogMessage> onBoardingLogIndexer,
+                                final MetricRegistry metricRegistry) {
         this.senseStructuredLogsIndexer = senseStructuredLogsIndexer;
         this.onBoardingLogIndexer = onBoardingLogIndexer;
+        this.metrics = metricRegistry;
 
-        this.structuredLogs = Metrics.defaultRegistry().newMeter(LogIndexerProcessor.class, "structured-logs", "structured-processed", TimeUnit.SECONDS);
-        this.onboardingLogs  = Metrics.defaultRegistry().newMeter(LogIndexerProcessor.class, "onboarding-logs", "onboarding-processed", TimeUnit.SECONDS);
+        this.structuredLogs = metrics.meter(name(LogIndexerProcessor.class, "structured-processed"));
+        this.onboardingLogs = metrics.meter(name(LogIndexerProcessor.class, "onboarding-processed"));
     }
 
     public static LogIndexerProcessor create(final SenseEventsDAO senseEventsDAO,
-                                             final OnBoardingLogDAO onBoardingLogDAO) {
+                                             final OnBoardingLogDAO onBoardingLogDAO,
+                                             final MetricRegistry metricRegistry) {
         return new LogIndexerProcessor(
-                new SenseStructuredLogIndexer(senseEventsDAO),
-                new OnBoardingLogIndexer(onBoardingLogDAO)
+            new SenseStructuredLogIndexer(senseEventsDAO),
+            new OnBoardingLogIndexer(onBoardingLogDAO),
+            metricRegistry
         );
     }
 

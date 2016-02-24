@@ -10,14 +10,16 @@ import com.hello.suripu.workers.pill.PillWorkerCommand;
 import com.hello.suripu.workers.sense.SenseSaveWorkerCommand;
 import com.hello.suripu.workers.sense.lastSeen.SenseLastSeenWorkerCommand;
 import com.hello.suripu.workers.timeline.TimelineWorkerCommand;
-import com.yammer.dropwizard.Service;
-import com.yammer.dropwizard.config.Bootstrap;
-import com.yammer.dropwizard.config.Environment;
+
 import org.joda.time.DateTimeZone;
 
 import java.util.TimeZone;
 
-public class HelloWorker extends Service<WorkerConfiguration> {
+import io.dropwizard.Application;
+import io.dropwizard.setup.Bootstrap;
+import io.dropwizard.setup.Environment;
+
+public class HelloWorker extends Application<WorkerConfiguration> {
 
     public static void main(String[] args) throws Exception {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));

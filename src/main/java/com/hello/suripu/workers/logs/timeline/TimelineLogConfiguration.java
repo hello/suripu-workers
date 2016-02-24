@@ -9,7 +9,6 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.db.DatabaseConfiguration;
 
 public class TimelineLogConfiguration extends WorkerConfiguration {
 

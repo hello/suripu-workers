@@ -10,7 +10,6 @@ import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
 
 import io.dropwizard.db.DataSourceFactory;
-import io.dropwizard.db.DatabaseConfiguration;
 
 /**
  * Created by kingshy on 1/6/15.

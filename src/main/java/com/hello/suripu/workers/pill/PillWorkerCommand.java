@@ -1,6 +1,5 @@
 package com.hello.suripu.workers.pill;
 
-import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -8,12 +7,15 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
+
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.db.PillDataDAODynamoDB;
 import com.hello.suripu.core.db.PillDataIngestDAO;
-import com.hello.suripu.coredw.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.DeviceDAO;
@@ -24,7 +26,6 @@ import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.PillHeartBeatDAO;
 import com.hello.suripu.core.db.TrackerMotionDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
-import com.hello.suripu.core.metrics.RegexMetricPredicate;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
@@ -35,8 +36,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.List;
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
+
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.setup.Environment;
 
 public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorkerConfiguration> {
 
@@ -55,12 +59,9 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
 
     @Override
     protected void run(Environment environment, Namespace namespace, PillWorkerConfiguration configuration) throws Exception {
-        final ManagedDataSourceFactory managedDataSourceFactory = new ManagedDataSourceFactory();
-        final ManagedDataSource sensorDataSource = managedDataSourceFactory.build(configuration.getSensorDB());
-
-
-        final DBIFactory dbiFactory = new DBIFactory();
-        final DBI commonDBI = dbiFactory.build(environment, configuration.getCommonDB(), "postgresql");
+        final DBIFactory factory = new DBIFactory();
+        final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
+        final DBI sensorsDBI = factory.build(environment, configuration.getSensorsDB(), "postgresql-sensors");
 
         // Joda Argument factory is not supported by default by DW, needs to be added manually
         commonDBI.registerArgumentFactory(new JodaArgumentFactory());
@@ -82,13 +83,17 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String prefix = String.format("%s.%s.suripu-workers", apiKey, env);
+            final String prefix = String.format("%s.%s.suripu-workers-pill", apiKey, env);
 
-            final List<String> metrics = configuration.getGraphite().getIncludeMetrics();
-            final RegexMetricPredicate predicate = new RegexMetricPredicate(metrics);
-            final Joiner joiner = Joiner.on(", ");
-            LOGGER.info("Logging the following metrics: {}", joiner.join(metrics));
-            GraphiteReporter.enable(Metrics.defaultRegistry(), interval, TimeUnit.SECONDS, graphiteHostName, 2003, prefix, predicate);
+            final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
+
+            final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
+            reporter.start(interval, TimeUnit.SECONDS);
 
             LOGGER.info("Metrics enabled.");
         } else {
@@ -107,11 +112,10 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
 
-
-        final ClientConfiguration clientConfiguration = new ClientConfiguration().withMaxErrorRetry(9); // 3x the default value
-        final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfiguration, configuration.dynamoDBConfiguration());
-        final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.FEATURES);
         final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
+        final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, configuration.dynamoDBConfiguration());
+
+        final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.FEATURES);
         final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
         final FeatureStore featureStore = new FeatureStore(featureDynamoDB, tableNames.get(DynamoDBTableName.FEATURES), featureNamespace);
 
@@ -133,21 +137,21 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
             pillDataIngestDAO = new PillDataDAODynamoDB(trackerMotionDynamoDB, tableNames.get(DynamoDBTableName.PILL_DATA));
             savePillHeartBeat = false;
         } else {
-            final DBI sensorsDBI = dbiFactory.build(environment, configuration.getSensorDB(), "postgresql");
             sensorsDBI.registerArgumentFactory(new JodaArgumentFactory());
             pillDataIngestDAO = sensorsDBI.onDemand(TrackerMotionDAO.class);
         }
 
-        final IRecordProcessorFactory factory = new SavePillDataProcessorFactory(
-                pillDataIngestDAO,
-                configuration.getBatchSize(),
-                mergedUserInfoDynamoDB,
-                pillKeyStore,
-                deviceDAO,
-                pillHeartBeatDAODynamoDB,
-                savePillHeartBeat
+        final IRecordProcessorFactory processorFactory = new SavePillDataProcessorFactory(
+            pillDataIngestDAO,
+            configuration.getBatchSize(),
+            mergedUserInfoDynamoDB,
+            pillKeyStore,
+            deviceDAO,
+            pillHeartBeatDAODynamoDB,
+            savePillHeartBeat,
+            environment.metrics()
         );
-        final Worker worker = new Worker(factory, kinesisConfig);
+        final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }
 }

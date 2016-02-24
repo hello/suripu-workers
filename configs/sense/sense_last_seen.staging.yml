@@ -5,7 +5,7 @@ graphite:
   api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
   reporting_interval_in_seconds: 30
   include_metrics:
-    - com.yammer
+    - io.dropwizard
     - com.hello
 
 kinesis:
@@ -14,13 +14,27 @@ kinesis:
     sense_sensors_data : dev_sense_sensors_data
 
 app_name: SenseLastSeen
-trim_horizon: false
 max_records: 100
+trim_horizon: false
 
 logging:
   level: INFO
   loggers:
     com.hello.suripu.workers: DEBUG
+    com.hello.suripu.core: DEBUG
+  appenders:
+    - type: file
+      threshold: DEBUG
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-lastseen.log
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-lastseen-%d{yyyy-MM-dd}.log.gz
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-sense-lastseen-dev
+      # timezone: UTC
+      # facility: USER
+      # sendLocalName: true
 
 dynamodb:
   region: us-east-1

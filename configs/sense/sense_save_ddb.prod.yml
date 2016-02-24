@@ -5,7 +5,7 @@ graphite:
   api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
   reporting_interval_in_seconds: 30
   include_metrics:
-    - com.yammer
+    - io.dropwizard
     - com.hello
 
 
@@ -27,6 +27,8 @@ common_db:
   # the SQL query to run when validating a connection's liveness
   validationQuery: "/* MyService Health Check */ SELECT 1"
 
+  initialSize: 2
+
   # the minimum number of connections to keep open
   minSize: 2
 
@@ -36,11 +38,11 @@ common_db:
   # whether or not idle connections should be validated
   checkConnectionWhileIdle: false
 
-  # how long a connection must be held before it can be validated
-  checkConnectionHealthWhenIdleFor: 10s
+  # the amount of time to sleep between runs of the idle connection validation, abandoned cleaner and idle pool resizing
+  evictionInterval: 10s
 
-  # the maximum lifetime of an idle connection
-  closeConnectionIfIdleFor: 1 minute
+  # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
+  minIdleTime: 1 minute
 
 sensors_db:
   driverClass: org.postgresql.Driver
@@ -60,6 +62,8 @@ sensors_db:
   # the SQL query to run when validating a connection's liveness
   validationQuery: "/* MyService Health Check */ SELECT 1"
 
+    initialSize: 2
+
   # the minimum number of connections to keep open
   minSize: 2
 
@@ -69,11 +73,11 @@ sensors_db:
   # whether or not idle connections should be validated
   checkConnectionWhileIdle: false
 
-  # how long a connection must be held before it can be validated
-  checkConnectionHealthWhenIdleFor: 10s
+  # the amount of time to sleep between runs of the idle connection validation, abandoned cleaner and idle pool resizing
+  evictionInterval: 10s
 
-  # the maximum lifetime of an idle connection
-  closeConnectionIfIdleFor: 1 minute
+  # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
+  minIdleTime: 1 minute
 
 kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com
@@ -84,30 +88,23 @@ app_name: SenseSaveConsumerProdDDB
 
 max_records: 300
 
-# Logging settings.
 logging:
-
-  # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
   level: INFO
-
-  # Logger-specific levels.
   loggers:
-
-    # Sets the level for 'com.example.app' to DEBUG.
     com.hello.suripu.workers: DEBUG
-  # Settings for logging to a file.
-  file:
-    enabled: true
-    threshold: DEBUG
-    currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-ddb.log
-    # When the log file rotates, the archived log will be renamed to this and gzipped. The
-    # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
-    # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
-    archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-ddb-%d{yyyy-MM-dd}.log.gz
-    # The number of archived files to keep.
-    archivedFileCount: 7
-    # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
-    timeZone: UTC
+  appenders:
+    - type: file
+      threshold: INFO
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-saveddb.log
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-saveddb-%d{yyyy-MM-dd}.log.gz
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-sense-saveddb-prod
+      # timezone: UTC
+      # facility: USER
+      # sendLocalName: true
 
 dynamodb:
   region: us-east-1

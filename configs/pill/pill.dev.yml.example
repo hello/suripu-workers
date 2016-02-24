@@ -108,7 +108,7 @@ logging:
     com.hello.suripu.core: DEBUG
   appenders:
     - type: console
-    # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
+      # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
       timeZone: UTC
 
 dynamodb:

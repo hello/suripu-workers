@@ -5,6 +5,7 @@ graphite:
   api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
   reporting_interval_in_seconds: 15
   include_metrics:
+    - io.dropwizard
     - com.hello
 
 max_records: 2000
@@ -14,7 +15,7 @@ common_db:
   driverClass: org.postgresql.Driver
 
   # the username
-  user: tim
+  user: your postgresql username
 
   # the password
   password: hello ingress user
@@ -32,20 +33,22 @@ common_db:
   # the SQL query to run when validating a connection's liveness
   validationQuery: "/* MyService Health Check */ SELECT 1"
 
+  initialSize: 2
+
   # the minimum number of connections to keep open
-  minSize: 8
+  minSize: 2
 
   # the maximum number of connections to keep open
-  maxSize: 32
+  maxSize: 8
 
   # whether or not idle connections should be validated
   checkConnectionWhileIdle: false
 
-  # how long a connection must be held before it can be validated
-  checkConnectionHealthWhenIdleFor: 10s
+  # the amount of time to sleep between runs of the idle connection validation, abandoned cleaner and idle pool resizing
+  evictionInterval: 10s
 
-  # the maximum lifetime of an idle connection
-  closeConnectionIfIdleFor: 1 minute
+  # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
+  minIdleTime: 1 minute
 
 kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com

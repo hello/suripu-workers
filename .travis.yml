@@ -14,13 +14,13 @@ script:
 - mkdir -p $TEMP_DIR/etc/hello
 - mkdir -p $TEMP_DIR/etc/init/
 - mkdir deb-pkg
-- cp configs/sense/alarm_worker.prod.yml $TEMP_DIR/etc/hello/alarm_worker.yml
-- cp configs/sense/insights_generator.prod.yml $TEMP_DIR/etc/hello/insights_generator.yml
-- cp configs/sense/index_logs_worker.prod.yml $TEMP_DIR/etc/hello/index_logs_worker.yml
-- cp configs/sense/timeline_logs.prod.yml $TEMP_DIR/etc/hello/timeline_logs.yml
-- cp configs/sense/pill.prod.yml $TEMP_DIR/etc/hello/pill.yml
-- cp configs/sense/pill_save_ddb.prod.yml $TEMP_DIR/etc/hello/pill_save_ddb.yml
-- cp configs/sense/push-notifications.prod.yml $TEMP_DIR/etc/hello/push-notifications.yml
+- cp configs/alarm/alarm_worker.prod.yml $TEMP_DIR/etc/hello/alarm_worker.yml
+- cp configs/insights/insights_generator.prod.yml $TEMP_DIR/etc/hello/insights_generator.yml
+- cp configs/logs/index_logs_worker.prod.yml $TEMP_DIR/etc/hello/index_logs_worker.yml
+- cp configs/logs/timeline_logs.prod.yml $TEMP_DIR/etc/hello/timeline_logs.yml
+- cp configs/pill/pill.prod.yml $TEMP_DIR/etc/hello/pill.yml
+- cp configs/pill/pill_save_ddb.prod.yml $TEMP_DIR/etc/hello/pill_save_ddb.yml
+- cp configs/push/push-notifications.prod.yml $TEMP_DIR/etc/hello/push-notifications.yml
 - cp configs/sense/sense_last_seen.prod.yml $TEMP_DIR/etc/hello/sense_last_seen.yml
 - cp configs/sense/sense_save.prod.yml $TEMP_DIR/etc/hello/sense_save.yml
 - cp configs/sense/sense_save_ddb.prod.yml $TEMP_DIR/etc/hello/sense_save_ddb.yml

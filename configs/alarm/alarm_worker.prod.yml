@@ -5,12 +5,12 @@ graphite:
   api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
   reporting_interval_in_seconds: 30
   include_metrics:
-    - com.yammer
+    - io.dropwizard
     - com.hello
 
 kinesis:
-  endpoint : https://kinesis.us-east-1.amazonaws.com
-  streams :
+  endpoint: https://kinesis.us-east-1.amazonaws.com
+  streams:
       sense_sensors_data : sense_sensors_data
 
 app_name: AlarmWorkerProd
@@ -21,67 +21,47 @@ maximum_record_age_minutes: 15
 
 # Logging settings.
 logging:
-
-  # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
   level: INFO
-
-  # Logger-specific levels.
   loggers:
+    com.hello.suripu.workers: INFO
+  appenders:
+    - type: file
+      threshold: DEBUG
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-alarm.log
+      # When the log file rotates, the archived log will be renamed to this and gzipped. The
+      # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
+      # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-alarm-%d{yyyy-MM-dd}.log.gz
+      # The number of archived files to keep.
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-alarm-prod
+      # timezone: UTC
+      # facility: USER
+      # sendLocalName: true
 
-    # Sets the level for 'com.example.app' to DEBUG.
-    com.hello.suripu.workers: DEBUG
-  # Settings for logging to a file.
-  file:
-    enabled: true
-    threshold: DEBUG
-    currentLogFilename: /var/log/suripu-workers/suripu-workers-alarm.log
-    # When the log file rotates, the archived log will be renamed to this and gzipped. The
-    # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
-    # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
-    archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-alarm-%d{yyyy-MM-dd}.log.gz
-    # The number of archived files to keep.
-    archivedFileCount: 7
-    # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
-    timeZone: UTC
-
-
-ring_time_db:
-  endpoint : http://dynamodb.us-east-1.amazonaws.com
+dynamodb:
   region: us-east-1
-  table_name: prod_ring_time
+  tables:
+    alarm_info: prod_alarm_info
+    features: features
+    pill_data: prod_pill_data
+    ring_time: prod_ring_time
+    smart_alarm_log: prod_smart_alarm_log
+    timezone_history: prod_timezone_history
 
-timezone_history_db:
-  endpoint : http://dynamodb.us-east-1.amazonaws.com
-  region: us-east-1
-  table_name: prod_timezone_history
-
-alarm_db:
-  endpoint : http://dynamodb.us-east-1.amazonaws.com
-  region: us-east-1
-  table_name: prod_alarm
-
-features_db:
-    endpoint : http://dynamodb.us-east-1.amazonaws.com
-    region: us-east-1
-    table_name: features
+  endpoints:
+    alarm_info: http://dynamodb.us-east-1.amazonaws.com
+    features: http://dynamodb.us-east-1.amazonaws.com
+    pill_data: http://dynamodb.us-east-1.amazonaws.com
+    ring_time: http://dynamodb.us-east-1.amazonaws.com
+    smart_alarm_log: http://dynamodb.us-east-1.amazonaws.com
+    timezone_history: http://dynamodb.us-east-1.amazonaws.com
 
 aggregate_window_size_min: 15
 
 smart_alarm_process_ahead_in_minutes: 30
 
 light_sleep_init_threshold: 0.2
-
-alarm_info_db:
-  endpoint : http://dynamodb.us-east-1.amazonaws.com
-  region: us-east-1
-  table_name: prod_alarm_info
-
-smart_alarm_log_db:
-  endpoint : http://dynamodb.us-east-1.amazonaws.com
-  region: us-east-1
-  table_name: prod_smart_alarm_log
-
-pill_data_db:
-  endpoint : http://dynamodb.us-east-1.amazonaws.com
-  region: us-east-1
-  table_name: prod_pill_data

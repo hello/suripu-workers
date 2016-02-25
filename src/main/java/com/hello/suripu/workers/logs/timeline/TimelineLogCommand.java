@@ -8,6 +8,10 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionIn
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.collect.ImmutableMap;
+
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.graphite.Graphite;
+import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
@@ -25,6 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
 
 import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.setup.Environment;
@@ -62,6 +68,28 @@ public class TimelineLogCommand extends WorkerEnvironmentCommand<TimelineLogConf
         final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
         final FeatureStore featureStore = new FeatureStore(featureDynamoDB, "features", featureNamespace);
 
+        if(configuration.getMetricsEnabled()) {
+            final String graphiteHostName = configuration.getGraphite().getHost();
+            final String apiKey = configuration.getGraphite().getApiKey();
+            final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
+
+            final String env = (configuration.getDebug()) ? "dev" : "prod";
+            final String prefix = String.format("%s.%s.suripu-workers-logs-timeline", apiKey, env);
+
+            final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
+
+            final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
+                .prefixedWith(prefix)
+                .convertRatesTo(TimeUnit.SECONDS)
+                .convertDurationsTo(TimeUnit.MILLISECONDS)
+                .filter(MetricFilter.ALL)
+                .build(graphite);
+            reporter.start(interval, TimeUnit.SECONDS);
+
+            LOGGER.info("Metrics enabled.");
+        } else {
+            LOGGER.warn("Metrics not enabled.");
+        }
 
 
         final DBIFactory factory = new DBIFactory();

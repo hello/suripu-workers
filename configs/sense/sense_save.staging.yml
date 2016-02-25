@@ -98,7 +98,7 @@ logging:
       threshold: INFO
       currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-save.log
       archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-save-%d{yyyy-MM-dd}.log.gz
-    archivedFileCount: 7
+      archivedFileCount: 7
     - type: papertrail
       host: logs2.papertrailapp.com
       port: 11366

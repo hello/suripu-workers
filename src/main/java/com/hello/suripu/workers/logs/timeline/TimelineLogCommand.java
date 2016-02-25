@@ -74,7 +74,7 @@ public class TimelineLogCommand extends WorkerEnvironmentCommand<TimelineLogConf
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
-        final IRecordProcessorFactory processorFactory = new TimelineLogProcessorFactory(timelineAnalyticsDAO);
+        final IRecordProcessorFactory processorFactory = new TimelineLogProcessorFactory(timelineAnalyticsDAO, environment.metrics());
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }

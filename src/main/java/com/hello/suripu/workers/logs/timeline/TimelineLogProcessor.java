@@ -29,13 +29,15 @@ public class TimelineLogProcessor extends HelloBaseRecordProcessor {
     private final static Logger LOGGER = LoggerFactory.getLogger(TimelineLogProcessor.class);
     private final TimelineAnalyticsDAO timelineAnalyticsDAO;
 
-    private MetricRegistry metrics;
+    private final MetricRegistry metrics;
     private final Meter timelineLogsReceived;
     private final Meter successfulTimelineLogInsertions;
     private final RatioGauge ratioOfSuccessfulInsertionsToReceived;
 
-    public TimelineLogProcessor(final TimelineAnalyticsDAO timelineAnalyticsDAO) {
+    public TimelineLogProcessor(final TimelineAnalyticsDAO timelineAnalyticsDAO, final MetricRegistry metricRegistry) {
         this.timelineAnalyticsDAO = timelineAnalyticsDAO;
+        this.metrics = metricRegistry;
+
         this.timelineLogsReceived = metrics.meter(name(TimelineLogProcessor.class, "received"));
         this.successfulTimelineLogInsertions = metrics.meter(name(TimelineLogProcessor.class, "inserted"));
         this.ratioOfSuccessfulInsertionsToReceived = metrics.register(name(TimelineLogProcessor.class, "inserted-per-received"), new RatioGauge() {
@@ -47,8 +49,8 @@ public class TimelineLogProcessor extends HelloBaseRecordProcessor {
         });
     }
 
-    public static TimelineLogProcessor create(final TimelineAnalyticsDAO timelineAnalyticsDAO) {
-        return new TimelineLogProcessor(timelineAnalyticsDAO);
+    public static TimelineLogProcessor create(final TimelineAnalyticsDAO timelineAnalyticsDAO, final MetricRegistry metricRegistry) {
+        return new TimelineLogProcessor(timelineAnalyticsDAO, metricRegistry);
     }
 
     @Override

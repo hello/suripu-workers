@@ -34,7 +34,6 @@ public abstract class Worker<T extends Configuration> {
      * Returns the {@link Class} of the configuration class type parameter.
      *
      * @return the configuration class
-     * @see com.yammer.dropwizard.util.Generics#getTypeParameter(Class, Class)
      */
     public final Class<T> getConfigurationClass() {
         return Generics.getTypeParameter(getClass(), Configuration.class);

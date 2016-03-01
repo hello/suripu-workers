@@ -167,3 +167,5 @@ dynamo_db:
 
 sleep_score_version: v_0_1
 sleep_stats_version: v_0_2
+
+insights_schedule_bucket: hello-prod

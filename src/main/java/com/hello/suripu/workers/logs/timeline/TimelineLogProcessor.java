@@ -32,7 +32,6 @@ public class TimelineLogProcessor extends HelloBaseRecordProcessor {
     private final MetricRegistry metrics;
     private final Meter timelineLogsReceived;
     private final Meter successfulTimelineLogInsertions;
-    private final RatioGauge ratioOfSuccessfulInsertionsToReceived;
 
     public TimelineLogProcessor(final TimelineAnalyticsDAO timelineAnalyticsDAO, final MetricRegistry metricRegistry) {
         this.timelineAnalyticsDAO = timelineAnalyticsDAO;
@@ -40,13 +39,6 @@ public class TimelineLogProcessor extends HelloBaseRecordProcessor {
 
         this.timelineLogsReceived = metrics.meter(name(TimelineLogProcessor.class, "received"));
         this.successfulTimelineLogInsertions = metrics.meter(name(TimelineLogProcessor.class, "inserted"));
-        this.ratioOfSuccessfulInsertionsToReceived = metrics.register(name(TimelineLogProcessor.class, "inserted-per-received"), new RatioGauge() {
-            @Override
-            public Ratio getRatio() {
-                return Ratio.of(successfulTimelineLogInsertions.getOneMinuteRate(),
-                    timelineLogsReceived.getOneMinuteRate());
-            }
-        });
     }
 
     public static TimelineLogProcessor create(final TimelineAnalyticsDAO timelineAnalyticsDAO, final MetricRegistry metricRegistry) {

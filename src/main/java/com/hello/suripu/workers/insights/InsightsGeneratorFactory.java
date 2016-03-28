@@ -2,6 +2,7 @@ package com.hello.suripu.workers.insights;
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.AccountReadDAO;
 import com.hello.suripu.core.db.AggregateSleepScoreDAODynamoDB;
@@ -41,6 +42,8 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
     private final WakeStdDevData wakeStdDevData;
     private final AccountPreferencesDAO accountPreferencesDAO;
     private final CalibrationDAO calibrationDAO;
+    private final AmazonS3Client amazonS3Client;
+    private final String insightScheduleBucket;
 
     public InsightsGeneratorFactory(final AccountDAO accountDAO,
                                     final DeviceDataDAO deviceDataDAO,
@@ -55,7 +58,9 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
                                     final LightData lightData,
                                     final WakeStdDevData wakeStdDevData,
                                     final AccountPreferencesDAO accountPreferencesDAO,
-                                    final CalibrationDAO calibrationDAO) {
+                                    final CalibrationDAO calibrationDAO,
+                                    final AmazonS3Client amazonS3Client,
+                                    final String insightScheduleBucket) {
         this.accountDAO = accountDAO;
         this.deviceDataDAO = deviceDataDAO;
         this.deviceDataDAODynamoDB = deviceDataDAODynamoDB;
@@ -70,6 +75,8 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
         this.wakeStdDevData = wakeStdDevData;
         this.accountPreferencesDAO = accountPreferencesDAO;
         this.calibrationDAO = calibrationDAO;
+        this.amazonS3Client = amazonS3Client;
+        this.insightScheduleBucket = insightScheduleBucket;
     }
 
     @Override
@@ -83,12 +90,14 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
                 .withSenseDAOs(deviceDataDAO, deviceDataDAODynamoDB, deviceDAO)
                 .withTrackerMotionDAO(trackerMotionDAO)
                 .withInsightsDAO(trendsInsightsDAO)
+                .withInsightScheduleLocation(insightScheduleBucket)
                 .withDynamoDBDAOs(scoreDAODynamoDB, insightsDAODynamoDB, sleepStatsDAODynamoDB)
                 .withAccountInfoProcessor(accountInfoProcessor)
                 .withLightData(lightData)
                 .withWakeStdDevData(wakeStdDevData)
                 .withPreferencesDAO(accountPreferencesDAO)
-                .withCalibrationDAO(calibrationDAO);
+                .withCalibrationDAO(calibrationDAO)
+                .withAmazonS3Client(amazonS3Client);
 
         final InsightProcessor insightProcessor = insightBuilder.build();
 

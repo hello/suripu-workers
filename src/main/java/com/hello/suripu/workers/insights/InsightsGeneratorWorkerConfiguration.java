@@ -70,4 +70,10 @@ public class InsightsGeneratorWorkerConfiguration extends WorkerConfiguration {
     public String getSleepStatsVersion() {
         return this.sleepStatsVersion;
     }
+
+    @Valid
+    @NotNull
+    @JsonProperty("insights_schedule_bucket")
+    private String insightsScheduleBucket;
+    public String getInsightsScheduleBucket() {return this.insightsScheduleBucket; }
 }

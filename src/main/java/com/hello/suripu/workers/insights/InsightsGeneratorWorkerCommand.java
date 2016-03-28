@@ -1,5 +1,6 @@
 package com.hello.suripu.workers.insights;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -8,6 +9,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.s3.AmazonS3Client;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 
@@ -184,6 +186,11 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
         final AmazonDynamoDB deviceDataDAODynamoDBClient = amazonDynamoDBClientFactory.getInstrumented(DynamoDBTableName.DEVICE_DATA, DeviceDataDAODynamoDB.class);
         final DeviceDataDAODynamoDB deviceDataDAODynamoDB = new DeviceDataDAODynamoDB(deviceDataDAODynamoDBClient, tableNames.get(DynamoDBTableName.DEVICE_DATA));
 
+        final ClientConfiguration clientConfiguration = new ClientConfiguration();
+        final AmazonS3Client amazonS3Client = new AmazonS3Client(awsCredentialsProvider, clientConfiguration);
+
+        final String insightScheduleBucket = configuration.getInsightsScheduleBucket();
+
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
@@ -205,7 +212,9 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
                 lightData,
                 wakeStdDevData,
                 accountPreferencesDynamoDB,
-                calibrationDAO);
+                calibrationDAO,
+                amazonS3Client,
+                insightScheduleBucket);
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }

@@ -11,7 +11,7 @@ import com.hello.suripu.core.db.DeviceDataDAO;
 import com.hello.suripu.core.db.DeviceDataDAODynamoDB;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.db.InsightsDAODynamoDB;
-import com.hello.suripu.core.db.QuestionResponseDAO;
+import com.hello.suripu.core.db.MarketingInsightsSeenDAODynamoDB;
 import com.hello.suripu.core.db.QuestionResponseReadDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.TrackerMotionDAO;
@@ -19,7 +19,6 @@ import com.hello.suripu.core.db.TrendsInsightsDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDAO;
 import com.hello.suripu.core.processors.AccountInfoProcessor;
 import com.hello.suripu.core.processors.InsightProcessor;
-import com.hello.suripu.core.processors.TimelineProcessor;
 import com.hello.suripu.core.processors.insights.LightData;
 import com.hello.suripu.core.processors.insights.WakeStdDevData;
 
@@ -41,6 +40,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
     private final WakeStdDevData wakeStdDevData;
     private final AccountPreferencesDAO accountPreferencesDAO;
     private final CalibrationDAO calibrationDAO;
+    private final MarketingInsightsSeenDAODynamoDB marketingInsightsSeenDAODynamoDB;
 
     public InsightsGeneratorFactory(final AccountDAO accountDAO,
                                     final DeviceDataDAO deviceDataDAO,
@@ -55,7 +55,8 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
                                     final LightData lightData,
                                     final WakeStdDevData wakeStdDevData,
                                     final AccountPreferencesDAO accountPreferencesDAO,
-                                    final CalibrationDAO calibrationDAO) {
+                                    final CalibrationDAO calibrationDAO,
+                                    final MarketingInsightsSeenDAODynamoDB marketingInsightsSeenDAODynamoDB) {
         this.accountDAO = accountDAO;
         this.deviceDataDAO = deviceDataDAO;
         this.deviceDataDAODynamoDB = deviceDataDAODynamoDB;
@@ -70,6 +71,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
         this.wakeStdDevData = wakeStdDevData;
         this.accountPreferencesDAO = accountPreferencesDAO;
         this.calibrationDAO = calibrationDAO;
+        this.marketingInsightsSeenDAODynamoDB = marketingInsightsSeenDAODynamoDB;
     }
 
     @Override
@@ -88,7 +90,8 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
                 .withLightData(lightData)
                 .withWakeStdDevData(wakeStdDevData)
                 .withPreferencesDAO(accountPreferencesDAO)
-                .withCalibrationDAO(calibrationDAO);
+                .withCalibrationDAO(calibrationDAO)
+                .withMarketingInsightsSeenDAO(marketingInsightsSeenDAODynamoDB);
 
         final InsightProcessor insightProcessor = insightBuilder.build();
 

@@ -20,10 +20,14 @@ app_name: LogIndexer
 dynamo_db:
   region: us-east-1
   tables:
+      alarm_info: alarm_info
       features : features
+      ring_time_history: ring_time_history
       sense_events: sense_events
   endpoints:
+      alarm_info: http://dynamodb.us-east-1.amazonaws.com
       features : http://dynamodb.us-east-1.amazonaws.com
+      ring_time_history: http://dynamodb.us-east-1.amazonaws.com
       sense_events: http://dynamodb.us-east-1.amazonaws.com
 
 common_db:
@@ -83,3 +87,5 @@ logging:
       # timezone: UTC
       # facility: USER
       # sendLocalName: true
+
+segment_write_key: AnMchQr1VXQhPKjeYuoEEQ7pPRlow9SO

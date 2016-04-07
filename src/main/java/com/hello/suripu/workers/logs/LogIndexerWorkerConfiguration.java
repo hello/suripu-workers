@@ -5,12 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.coredw8.configuration.RedisConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-
+import io.dropwizard.db.DataSourceFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-
-import io.dropwizard.db.DataSourceFactory;
 
 public class LogIndexerWorkerConfiguration extends WorkerConfiguration {
 
@@ -40,5 +38,11 @@ public class LogIndexerWorkerConfiguration extends WorkerConfiguration {
     private RedisConfiguration redisConfiguration;
     public RedisConfiguration redisConfiguration() {
         return redisConfiguration;
+    }
+
+    @JsonProperty("segment_write_key")
+    private String segmentWriteKey;
+    public String segmentWriteKey() {
+        return segmentWriteKey;
     }
 }

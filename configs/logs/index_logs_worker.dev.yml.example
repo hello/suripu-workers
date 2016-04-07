@@ -20,11 +20,15 @@ app_name: LogIndexerDev
 dynamo_db:
   region: us-east-1
   tables:
+      alarm_info: alarm_info
       features : features
+      ring_time_history: ring_time_history
       sense_events: sense_events
 
   endpoints:
+      alarm_info: http://localhost:7777
       features : http://localhost:7777
+      ring_time_history: http://localhost:7777
       sense_events: http://localhost:7777
 
 common_db:
@@ -66,3 +70,5 @@ common_db:
 
   # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
   minIdleTime: 1 minute
+
+segment_write_key: AnMchQr1VXQhPKjeYuoEEQ7pPRlow9SO

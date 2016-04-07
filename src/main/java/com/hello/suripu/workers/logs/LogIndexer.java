@@ -4,4 +4,6 @@ public interface LogIndexer<T> {
 
     public void collect(final T t);
     public Integer index();
+    public void flush();
+    public void shutdown();
 }

@@ -5,30 +5,35 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
-import com.google.common.base.Joiner;
-import com.google.common.collect.ImmutableMap;
-
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
-import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.FeatureStore;
+import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
+import com.hello.suripu.core.db.RingTimeHistoryDAODynamoDB;
+import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-
+import com.segment.analytics.Analytics;
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.jdbi.ImmutableListContainerFactory;
+import io.dropwizard.jdbi.ImmutableSetContainerFactory;
+import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
@@ -37,12 +42,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
-
-import io.dropwizard.jdbi.DBIFactory;
-import io.dropwizard.jdbi.ImmutableListContainerFactory;
-import io.dropwizard.jdbi.ImmutableSetContainerFactory;
-import io.dropwizard.jdbi.OptionalContainerFactory;
-import io.dropwizard.setup.Environment;
 
 public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexerWorkerConfiguration> {
 
@@ -62,6 +61,8 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
 
         final AmazonDynamoDB senseEventsDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.SENSE_EVENTS, SenseEventsDAO.class);
         final SenseEventsDAO senseEventsDAO = new SenseEventsDAO(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
+
+        final AmazonDynamoDB ringtimeHistoryClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.RING_TIME_HISTORY, RingTimeHistoryDAODynamoDB.class);
 
         init(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
 
@@ -127,10 +128,24 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
+        final Analytics analytics = Analytics.builder(configuration.segmentWriteKey()).build();
+        final RingTimeHistoryReadDAO ringTimeHistoryDAODynamoDB = new TempRingtimeDDB(
+                ringtimeHistoryClient,
+                configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.RING_TIME_HISTORY)
+        );
+
+        final MergedUserInfoDynamoDB mergedUserInfoDynamoDB = new MergedUserInfoDynamoDB(
+                ringtimeHistoryClient,
+                configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.ALARM_INFO)
+        );
+
         final IRecordProcessorFactory processorFactory = new LogIndexerProcessorFactory(configuration,
-            dynamoDBClientFactory,
-            onBoardingLogDAO,
-            environment.metrics()
+                dynamoDBClientFactory,
+                onBoardingLogDAO,
+                environment.metrics(),
+                analytics,
+                ringTimeHistoryDAODynamoDB,
+                mergedUserInfoDynamoDB
         );
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();

@@ -32,4 +32,14 @@ public class OnBoardingLogIndexer implements LogIndexer<LoggingProtos.BatchLogMe
             return insertedCount;
         }
     }
+
+    @Override
+    public void flush() {
+        index();
+    }
+
+    @Override
+    public void shutdown() {
+
+    }
 }

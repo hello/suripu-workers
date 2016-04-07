@@ -10,12 +10,15 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibC
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.hello.suripu.core.ObjectGraphRoot;
+import com.hello.suripu.core.algorithmintegration.NeuralNetAlgorithmOutput;
+import com.hello.suripu.core.algorithmintegration.NeuralNetEndpoint;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.AccountDAOImpl;
@@ -196,6 +199,15 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
         final AmazonDynamoDB calibrationDynamoDBClient = dynamoDBClientFactory.getForEndpoint(configuration.getDynamoDBConfiguration().endpoints().get(DynamoDBTableName.CALIBRATION));
         final CalibrationDAO calibrationDAO = CalibrationDynamoDB.create(calibrationDynamoDBClient, configuration.getDynamoDBConfiguration().tables().get(DynamoDBTableName.CALIBRATION));
 
+        //AT SOME POINT TaimurainHttpConfiguration will be put into coredw8, so we can use it here
+        //for now, we are just doing this
+        final NeuralNetEndpoint fakeEndpoint = new NeuralNetEndpoint() {
+            @Override
+            public Optional<NeuralNetAlgorithmOutput> getNetOutput(String s, double[][] doubles) {
+                return Optional.absent();
+            }
+        };
+
         final TimelineProcessor timelineProcessor =
                 TimelineProcessor.createTimelineProcessor(pillDataDAODynamoDB,
                 deviceDAO, deviceDataDAODynamoDB,
@@ -209,7 +221,8 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
                 featureExtractionModelsDAO,
                 calibrationDAO,
                         defaultModelEnsembleDAO,
-                        userTimelineTestGroupDAO);
+                        userTimelineTestGroupDAO,
+                        fakeEndpoint);
 
         final ImmutableMap<QueueName, String> queueNames = configuration.getQueues();
 

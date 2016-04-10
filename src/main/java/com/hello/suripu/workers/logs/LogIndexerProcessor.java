@@ -70,7 +70,7 @@ public class LogIndexerProcessor implements IRecordProcessor {
                 if(batchLogMessage.hasLogType()) {
                     switch (batchLogMessage.getLogType()) {
                         case STRUCTURED_SENSE_LOG:
-                            senseStructuredLogsIndexer.collect(batchLogMessage);
+                            senseStructuredLogsIndexer.collect(batchLogMessage, record.getSequenceNumber());
                             break;
                         case ONBOARDING_LOG:
                             this.onBoardingLogIndexer.collect(batchLogMessage);

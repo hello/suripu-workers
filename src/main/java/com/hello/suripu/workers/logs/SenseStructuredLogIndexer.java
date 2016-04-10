@@ -4,12 +4,14 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.hello.suripu.api.logging.LoggingProtos;
+import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
 import com.hello.suripu.core.metrics.DeviceEvents;
 import com.hello.suripu.core.models.RingTime;
 import com.hello.suripu.core.models.UserInfo;
+import com.hello.suripu.workers.WorkerFeatureFlipper;
 import com.librato.rollout.RolloutClient;
 import com.segment.analytics.Analytics;
 import com.segment.analytics.messages.MessageBuilder;
@@ -18,14 +20,17 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.BatchLogMessage> {
+
+    @Inject
+    RolloutClient flipper;
 
     private final static Logger LOGGER = LoggerFactory.getLogger(SenseStructuredLogIndexer.class);
 
@@ -34,26 +39,28 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
     private final List<DeviceEvents> deviceEventsList;
     private final RingTimeHistoryReadDAO ringHistoryDAO;
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
-    private final RolloutClient flipper;
+    private final static Pattern PATTERN = Pattern.compile("(\\w+:{1}\\w+)");
+
 
     public SenseStructuredLogIndexer(
             final SenseEventsDAO senseEventsDAO,
             final Analytics analytics,
             final RingTimeHistoryReadDAO ringHistoryDDB,
-            final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
-            final RolloutClient rolloutClient) {
+            final MergedUserInfoDynamoDB mergedUserInfoDynamoDB) {
         this.senseEventsDAO = senseEventsDAO;
         this.deviceEventsList = Lists.newArrayList();
         this.analytics = analytics;
         this.ringHistoryDAO = ringHistoryDDB;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
-        this.flipper = rolloutClient;
+        ObjectGraphRoot.getInstance().inject(this);
     }
 
 
     @Override
     public Integer index() {
-        final Integer count = senseEventsDAO.write(ImmutableList.copyOf(deviceEventsList));
+        final ImmutableList<DeviceEvents> events = ImmutableList.copyOf(deviceEventsList);
+        final Integer count = senseEventsDAO.write(events);
+        this.sendToSegment(events);
         deviceEventsList.clear();
         analytics.flush();
         return count;
@@ -71,9 +78,9 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
 
     public static Set<String> decode(final String text) {
 
-        final Set<String> decoded = new HashSet<>();
-        final Pattern pattern = Pattern.compile("(\\w+:{1}\\w+)");
-        final Matcher matcher = pattern.matcher(text.replace(" ", ""));
+        final Set<String> decoded = Sets.newHashSet();
+
+        final Matcher matcher = PATTERN.matcher(text.replace(" ", ""));
         while (matcher.find()) {
             decoded.add(matcher.group());
         }
@@ -83,33 +90,45 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
     @Override
     public void collect(final LoggingProtos.BatchLogMessage batchLogMessage) {
         for(final LoggingProtos.LogMessage logMessage : batchLogMessage.getMessagesList()) {
-            LOGGER.info(logMessage.getDeviceId());
-            if(!logMessage.getDeviceId().equals("8AF6441AF72321F4")) {
-                continue;
-            }
             final Set<String> events = decode(logMessage.getMessage());
             final DateTime createdAt = new DateTime(logMessage.getTs() * 1000L, DateTimeZone.UTC);
             final DeviceEvents deviceEvents = new DeviceEvents(logMessage.getDeviceId(), createdAt, events);
             deviceEventsList.add(deviceEvents);
         }
+    }
 
 
-        // WARNING
+    private void sendToSegment(final List<DeviceEvents> deviceEventsList) {
         for(final DeviceEvents deviceEvents : deviceEventsList) {
-            if(!flipper.deviceFeatureActive("segment", deviceEvents.deviceId, Collections.EMPTY_LIST)) {
+            // TODO reverse condition when no longer testing
+            if(!flipper.deviceFeatureActive(WorkerFeatureFlipper.SEND_TO_SEGMENT, deviceEvents.deviceId, Collections.EMPTY_LIST)) {
                 continue;
             }
 
             final Set<Long> pairedAccounts = pairedAccounts(deviceEvents);
             final Set<Long> alarmAccounts = Sets.newHashSet();
+
+            // only query when we have an alarm event
             if (hasAlarm(deviceEvents.events)) {
                 alarmAccounts.addAll(queryAlarmAround(deviceEvents, pairedAccounts, 5));
             }
-            final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents,pairedAccounts, alarmAccounts);
+
+            final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents, pairedAccounts, alarmAccounts, true);
+
+            if(!analyticsMessageBuilders.isEmpty()) {
+                LOGGER.info("action=send-to-segment count={}", analyticsMessageBuilders.size());
+            }
+
             for(MessageBuilder mb : analyticsMessageBuilders) {
                 analytics.enqueue(mb); // This should be non-blocking
             }
         }
+    }
+
+    @Override
+    public void collect(final LoggingProtos.BatchLogMessage batchLogMessage, final String sequenceNumber) {
+        // pass through to help with debugging kinesis records
+        collect(batchLogMessage);
     }
 
 
@@ -152,9 +171,6 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
 
 
     public static boolean hasAlarm(final Set<String> events) {
-        return  events.contains(SegmentHelpers.ALARM_RING_EVENT);
+        return  events.contains(SegmentHelpers.ALARM_RING_EVENT) || events.contains(SegmentHelpers.ALARM_DISMISSED_EVENT);
     }
-
-
-
 }

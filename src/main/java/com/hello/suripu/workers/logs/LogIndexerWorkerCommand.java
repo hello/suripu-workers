@@ -64,6 +64,8 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
 
         final AmazonDynamoDB ringtimeHistoryClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.RING_TIME_HISTORY, RingTimeHistoryDAODynamoDB.class);
 
+        final AmazonDynamoDB alarmInfoClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.ALARM_INFO, MergedUserInfoDynamoDB.class);
+
         init(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
 
         if(configuration.getMetricsEnabled()) {
@@ -135,7 +137,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         );
 
         final MergedUserInfoDynamoDB mergedUserInfoDynamoDB = new MergedUserInfoDynamoDB(
-                ringtimeHistoryClient,
+                alarmInfoClient,
                 configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.ALARM_INFO)
         );
 

@@ -21,41 +21,41 @@ public class SegmentHelpersTest {
 
     @Test
     public void testTagSingleUserAlarmEventButNoWithinRange() {
-        final DeviceEvents deviceEvents = deviceEvents(Sets.<String>newHashSet("alarm: ring"));
+        final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT));
 
         final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
         final Set<Long> withAlarm = Sets.newHashSet(); // simulates out of range for alarm query
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, false);
         assertThat(mbs.isEmpty(), is(true));
     }
 
     @Test
     public void testTagSingleUserAlarmEvent() {
-        final DeviceEvents deviceEvents = deviceEvents(Sets.<String>newHashSet("alarm: ring"));
+        final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT));
 
         final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
         final Set<Long> withAlarm = Sets.newHashSet(1L); // simulates one account having alarm within range
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, false);
         assertThat(mbs.size(), is(withAlarm.size()));
     }
 
     @Test
     public void testTagMultipleUsersAlarmEvent() {
-        final DeviceEvents deviceEvents = deviceEvents(Sets.<String>newHashSet("alarm: ring"));
+        final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT));
 
         final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
         final Set<Long> withAlarm = Sets.newHashSet(1L, 2L); // simulates two accounts having an alarm within range
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, false);
         assertThat(mbs.size(), is(withAlarm.size()));
     }
 
     @Test
     public void testTagMultipleUsersWaveAndSingleUserAlarm() {
-        final DeviceEvents deviceEvents = deviceEvents(Sets.<String>newHashSet("alarm: ring", "gesture: wave"));
+        final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT, SegmentHelpers.WAVE_EVENT));
 
         final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
         final Set<Long> withAlarm = Sets.newHashSet(1L);
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, true);
         assertThat(mbs.size(), is(withAlarm.size() + pairedAccounts.size()));
     }
 

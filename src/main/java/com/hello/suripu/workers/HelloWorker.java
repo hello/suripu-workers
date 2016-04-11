@@ -22,6 +22,7 @@ import io.dropwizard.setup.Environment;
 public class HelloWorker extends Application<WorkerConfiguration> {
 
     public static void main(String[] args) throws Exception {
+        java.security.Security.setProperty("networkaddress.cache.ttl", "10");
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
         DateTimeZone.setDefault(DateTimeZone.UTC);
         new HelloWorker().run(args);

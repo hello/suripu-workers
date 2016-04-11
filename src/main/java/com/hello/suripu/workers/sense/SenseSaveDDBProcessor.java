@@ -91,6 +91,9 @@ public class SenseSaveDDBProcessor extends HelloBaseRecordProcessor {
             }
 
             final String deviceName = batchPeriodicDataWorker.getData().getDeviceId();
+            if (!deviceName.equalsIgnoreCase("DE252B1E40F14AE8")) {
+                continue;
+            }
 
             final List<Long> accounts = Lists.newArrayList();
             for (final DataInputProtos.AccountMetadata metadata: batchPeriodicDataWorker.getTimezonesList()) {
@@ -153,13 +156,12 @@ public class SenseSaveDDBProcessor extends HelloBaseRecordProcessor {
             }
         }
 
-
         try {
-            int inserted = deviceDataDAO.batchInsertAll(deviceDataList);
+            int inserted = 0; //deviceDataDAO.batchInsertAll(deviceDataList);
 
-            if(inserted == deviceDataList.size()) {
+            if (inserted == deviceDataList.size()) {
                 LOGGER.trace("Batch saved {} data to DB", inserted);
-            }else{
+            } else {
                 LOGGER.warn("Batch save failed, save {} data using itemize insert.", inserted);
             }
 

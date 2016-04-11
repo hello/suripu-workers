@@ -9,15 +9,14 @@ import com.hello.suripu.workers.notifications.PushNotificationsWorkerCommand;
 import com.hello.suripu.workers.pill.PillWorkerCommand;
 import com.hello.suripu.workers.sense.SenseSaveWorkerCommand;
 import com.hello.suripu.workers.sense.lastSeen.SenseLastSeenWorkerCommand;
+import com.hello.suripu.workers.splitter.SenseStreamSplitterCommand;
 import com.hello.suripu.workers.timeline.TimelineWorkerCommand;
-
-import org.joda.time.DateTimeZone;
-
-import java.util.TimeZone;
-
 import io.dropwizard.Application;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import org.joda.time.DateTimeZone;
+
+import java.util.TimeZone;
 
 public class HelloWorker extends Application<WorkerConfiguration> {
 
@@ -40,6 +39,7 @@ public class HelloWorker extends Application<WorkerConfiguration> {
         bootstrap.addCommand(new TimelineWorkerCommand("timeline", "generate timeline for users"));
         bootstrap.addCommand(new PushNotificationsWorkerCommand("push", "send push notifications"));
         bootstrap.addCommand(new TimelineLogCommand("timeline_log", "timeline log"));
+        bootstrap.addCommand(new SenseStreamSplitterCommand("sense_stream_splitter", "split sense stream"));
     }
 
     @Override

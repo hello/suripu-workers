@@ -2,18 +2,15 @@ package com.hello.suripu.workers.notifications;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Sets;
-import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
-import com.hello.suripu.core.configuration.PushNotificationsConfiguration;
+import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
+import com.hello.suripu.coredw8.configuration.PushNotificationsConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-
-
+import io.dropwizard.db.DataSourceFactory;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.Set;
-
-import io.dropwizard.db.DataSourceFactory;
 
 public class PushNotificationsWorkerConfiguration extends WorkerConfiguration {
     @Valid

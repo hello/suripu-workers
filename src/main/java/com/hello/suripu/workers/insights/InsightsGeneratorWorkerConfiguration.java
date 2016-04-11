@@ -1,7 +1,7 @@
 package com.hello.suripu.workers.insights;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
+import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 import io.dropwizard.db.DataSourceFactory;
 

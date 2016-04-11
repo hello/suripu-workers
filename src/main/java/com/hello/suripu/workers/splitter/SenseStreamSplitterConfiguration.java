@@ -1,7 +1,7 @@
 package com.hello.suripu.workers.splitter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.coredw.configuration.KinesisConfiguration;
+import com.hello.suripu.coredw8.configuration.KinesisConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 
 import javax.validation.Valid;

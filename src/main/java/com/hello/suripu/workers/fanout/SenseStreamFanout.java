@@ -1,4 +1,4 @@
-package com.hello.suripu.workers.splitter;
+package com.hello.suripu.workers.fanout;
 
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
@@ -19,8 +19,8 @@ import static com.codahale.metrics.MetricRegistry.name;
 /**
  * Created by ksg on 4/8/16
  */
-public class SenseStreamSplitter extends HelloBaseRecordProcessor {
-    private final static Logger LOGGER = LoggerFactory.getLogger(SenseStreamSplitter.class);
+public class SenseStreamFanout extends HelloBaseRecordProcessor {
+    private final static Logger LOGGER = LoggerFactory.getLogger(SenseStreamFanout.class);
 
     private final DataLogger dataLogger;
     private final Integer maxRecords;
@@ -30,12 +30,12 @@ public class SenseStreamSplitter extends HelloBaseRecordProcessor {
     private final Meter recordsProcessed;
     private final Meter recordsFailed;
 
-    public SenseStreamSplitter(final DataLogger dataLogger, final Integer maxRecords, final MetricRegistry metrics) {
+    public SenseStreamFanout(final DataLogger dataLogger, final Integer maxRecords, final MetricRegistry metrics) {
         this.dataLogger = dataLogger;
         this.maxRecords = maxRecords;
-        this.capacity = metrics.meter(name(SenseStreamSplitter.class, "capacity"));
-        this.recordsProcessed = metrics.meter(name(SenseStreamSplitter.class, "records-processed"));
-        this.recordsFailed = metrics.meter(name(SenseStreamSplitter.class, "records-failed"));
+        this.capacity = metrics.meter(name(SenseStreamFanout.class, "capacity"));
+        this.recordsProcessed = metrics.meter(name(SenseStreamFanout.class, "records-processed"));
+        this.recordsFailed = metrics.meter(name(SenseStreamFanout.class, "records-failed"));
     }
 
     @Override

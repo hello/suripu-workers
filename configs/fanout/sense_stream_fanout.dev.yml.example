@@ -1,4 +1,4 @@
-metrics_enabled: true
+metrics_enabled: false
 debug: false
 graphite:
   host: carbon.hostedgraphite.com
@@ -20,11 +20,11 @@ output:
   streams :
     sense_sensors_data_split : dev_sense_sensors_data_fanout_one
 
-app_name: SenseStreamSplitConsumerDev
+app_name: SenseStreamFanoutConsumerDev
 
 max_records: 100
 
-trim_horizon: false
+trim_horizon: true
 
 # Logging settings.
 logging:
@@ -32,15 +32,9 @@ logging:
   loggers:
     com.hello.suripu.workers: DEBUG
   appenders:
-    - type: file
-      threshold: INFO
-      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-splitter.log
-      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-splitter-%d{yyyy-MM-dd}.log.gz
-      archivedFileCount: 7
-    - type: papertrail
-      host: logs2.papertrailapp.com
-      port: 11366
-      ident: suripu-workers-sense-splitter-dev
+    - type: console
+      # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
+      timeZone: UTC
 
 dynamodb:
   region: us-east-1

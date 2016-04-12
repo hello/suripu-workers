@@ -20,7 +20,7 @@ output:
   streams :
     sense_sensors_data_split : sense_sensors_data_fanout_one
 
-app_name: SenseStreamSplitConsumerProd
+app_name: SenseStreamFanoutConsumerProd
 
 max_records: 300
 
@@ -35,13 +35,13 @@ logging:
   appenders:
     - type: file
       threshold: INFO
-      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-splitter.log
-      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-splitter-%d{yyyy-MM-dd}.log.gz
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-fanout.log
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-fanout-%d{yyyy-MM-dd}.log.gz
       archivedFileCount: 7
     - type: papertrail
       host: logs2.papertrailapp.com
       port: 11366
-      ident: suripu-workers-sense-splitter-prod
+      ident: suripu-workers-sense-fanout-prod
 
 
 dynamodb:

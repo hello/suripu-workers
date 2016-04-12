@@ -1,4 +1,4 @@
-package com.hello.suripu.workers.splitter;
+package com.hello.suripu.workers.fanout;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.coredw8.configuration.KinesisConfiguration;
@@ -12,7 +12,7 @@ import javax.validation.constraints.NotNull;
 /**
  * Created by ksg on 4/8/16
  */
-public class SenseStreamSplitterConfiguration extends WorkerConfiguration {
+public class SenseStreamFanoutConfiguration extends WorkerConfiguration {
     @Valid
     @NotNull
     @Max(1000)

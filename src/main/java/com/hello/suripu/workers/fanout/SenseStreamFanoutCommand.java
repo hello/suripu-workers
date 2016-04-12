@@ -1,4 +1,4 @@
-package com.hello.suripu.workers.splitter;
+package com.hello.suripu.workers.fanout;
 
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -34,17 +34,17 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by ksg on 4/8/16
  */
-public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseStreamSplitterConfiguration> {
+public class SenseStreamFanoutCommand extends WorkerEnvironmentCommand<SenseStreamFanoutConfiguration> {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(SenseStreamSplitterCommand.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(SenseStreamFanoutCommand.class);
 
-    public SenseStreamSplitterCommand(String name, String description) {
+    public SenseStreamFanoutCommand(String name, String description) {
         super(name, description);
     }
 
 
     @Override
-    protected void run(Environment environment, Namespace namespace, SenseStreamSplitterConfiguration configuration) throws Exception {
+    protected void run(Environment environment, Namespace namespace, SenseStreamFanoutConfiguration configuration) throws Exception {
 
         // metrics
         if (configuration.getMetricsEnabled()) {
@@ -53,7 +53,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String prefix = String.format("%s.%s.suripu-workers-sense-splitter", apiKey, env);
+            final String prefix = String.format("%s.%s.suripu-workers-sense-fanout", apiKey, env);
 
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
 
@@ -65,9 +65,9 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
                     .build(graphite);
             reporter.start(interval, TimeUnit.SECONDS);
 
-            LOGGER.info("info=stream-splitter-metrics value=enabled.");
+            LOGGER.info("info=stream-fanout-metrics value=enabled.");
         } else {
-            LOGGER.warn("info=stream-splitter-metrics value=disabled.");
+            LOGGER.warn("info=stream-fanout-metrics value=disabled.");
         }
 
 
@@ -89,7 +89,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
 
         LOGGER.debug("action=get-queues queue_names={}", queueNames);
         final String queueName = queueNames.get(QueueName.SENSE_SENSORS_DATA);
-        LOGGER.info("\n\n\ninfo=stream-splitter-consumes-the-following-queue queue={} !!!\n\n\n", queueName);
+        LOGGER.info("\n\n\ninfo=stream-fanout-consumes-the-following-queue queue={} !!!\n\n\n", queueName);
 
         final String workerId = InetAddress.getLocalHost().getCanonicalHostName();
         final KinesisClientLibConfiguration inputKinesisConfig = new KinesisClientLibConfiguration(
@@ -119,7 +119,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
 
         final DataLogger kinesisLogger = kinesisLoggerFactory.get(QueueName.SENSE_SENSORS_DATA_FANOUT_ONE);
 
-        final IRecordProcessorFactory factory = new SenseStreamSplitterFactory(
+        final IRecordProcessorFactory factory = new SenseStreamFanoutFactory(
                 kinesisLogger,
                 configuration.getMaxRecords(),
                 environment.metrics()

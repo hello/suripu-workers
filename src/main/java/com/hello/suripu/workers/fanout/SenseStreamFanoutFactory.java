@@ -1,4 +1,4 @@
-package com.hello.suripu.workers.splitter;
+package com.hello.suripu.workers.fanout;
 
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
@@ -8,12 +8,12 @@ import com.hello.suripu.core.logging.DataLogger;
 /**
  * Created by ksg on 4/8/16
  */
-public class SenseStreamSplitterFactory implements IRecordProcessorFactory {
+public class SenseStreamFanoutFactory implements IRecordProcessorFactory {
     private final DataLogger outputKinesisLogger;
     private final Integer maxRecords;
     private final MetricRegistry metricRegistry;
 
-    public SenseStreamSplitterFactory(final DataLogger outputKinesisLogger, final Integer maxRecords, final MetricRegistry metricRegistry) {
+    public SenseStreamFanoutFactory(final DataLogger outputKinesisLogger, final Integer maxRecords, final MetricRegistry metricRegistry) {
         this.outputKinesisLogger = outputKinesisLogger;
         this.maxRecords = maxRecords;
         this.metricRegistry = metricRegistry;
@@ -21,7 +21,7 @@ public class SenseStreamSplitterFactory implements IRecordProcessorFactory {
 
     @Override
     public IRecordProcessor createProcessor() {
-        return new SenseStreamSplitter(outputKinesisLogger, maxRecords, metricRegistry);
+        return new SenseStreamFanout(outputKinesisLogger, maxRecords, metricRegistry);
     }
 
 }

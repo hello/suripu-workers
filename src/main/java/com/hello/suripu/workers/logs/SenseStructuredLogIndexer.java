@@ -100,7 +100,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
 
     private void sendToSegment(final List<DeviceEvents> deviceEventsList) {
         for(final DeviceEvents deviceEvents : deviceEventsList) {
-            // TODO reverse condition when no longer testing
+
             if(!flipper.deviceFeatureActive(WorkerFeatureFlipper.SEND_TO_SEGMENT, deviceEvents.deviceId, Collections.EMPTY_LIST)) {
                 continue;
             }
@@ -113,7 +113,8 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
                 alarmAccounts.addAll(queryAlarmAround(deviceEvents, pairedAccounts, 5));
             }
 
-            final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents, pairedAccounts, alarmAccounts, false);
+            final boolean trackAll = flipper.deviceFeatureActive(WorkerFeatureFlipper.SEND_TO_SEGMENT_WAVE, deviceEvents.deviceId, Collections.EMPTY_LIST);
+            final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents, pairedAccounts, alarmAccounts, trackAll);
 
             if(!analyticsMessageBuilders.isEmpty()) {
                 LOGGER.info("action=send-to-segment count={}", analyticsMessageBuilders.size());

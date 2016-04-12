@@ -5,6 +5,10 @@ import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.annotation.Timed;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheStats;
@@ -12,22 +16,16 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.protobuf.InvalidProtocolBufferException;
-
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.Timer;
-import com.codahale.metrics.annotation.Timed;
 import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.db.DeviceDataIngestDAO;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.SensorsViewsDynamoDB;
-import com.hello.suripu.core.flipper.FeatureFlipper;
 import com.hello.suripu.core.models.DeviceAccountPair;
 import com.hello.suripu.core.models.DeviceData;
 import com.hello.suripu.core.util.SenseProcessorUtils;
+import com.hello.suripu.workers.WorkerFeatureFlipper;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -138,9 +136,14 @@ public class SenseSaveProcessor extends HelloBaseRecordProcessor {
 
             final String deviceName = batchPeriodicDataWorker.getData().getDeviceId();
 
+            if(flipper.deviceFeatureActive(WorkerFeatureFlipper.BLACKLIST_SENSE, deviceName, Collections.EMPTY_LIST)) {
+                LOGGER.warn("action=blacklist sense_id={}", deviceName);
+                continue;
+            }
+
             final List<DeviceAccountPair> deviceAccountPairs = Lists.newArrayList();
 
-            if(!flipper.deviceFeatureActive(FeatureFlipper.WORKER_PG_CACHE, deviceName, Collections.EMPTY_LIST) || batchPeriodicDataWorker.getUptimeInSecond() < MIN_UPTIME_IN_SECONDS_FOR_CACHING) {
+            if(!flipper.deviceFeatureActive(WorkerFeatureFlipper.PG_CACHE, deviceName, Collections.EMPTY_LIST) || batchPeriodicDataWorker.getUptimeInSecond() < MIN_UPTIME_IN_SECONDS_FOR_CACHING) {
                 deviceAccountPairs.addAll(deviceDAO.getAccountIdsForDeviceId(deviceName));
             } else {
                 deviceAccountPairs.addAll(dbCache.getUnchecked(deviceName));
@@ -251,7 +254,7 @@ public class SenseSaveProcessor extends HelloBaseRecordProcessor {
 
         // This lets us clear the cache remotely by turning on the feature in FeatureFlipper.
         // DeviceId is not required and thus empty
-        if(flipper.deviceFeatureActive(FeatureFlipper.WORKER_CLEAR_ALL_CACHE, "", Collections.EMPTY_LIST)) {
+        if(flipper.deviceFeatureActive(WorkerFeatureFlipper.CLEAR_ALL_CACHE, "", Collections.EMPTY_LIST)) {
             LOGGER.warn("Clearing all caches");
             dbCache.invalidateAll();
         }

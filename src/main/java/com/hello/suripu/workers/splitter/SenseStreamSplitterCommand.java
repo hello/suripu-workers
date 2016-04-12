@@ -117,7 +117,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
                 configuration.getKinesisOutputConfiguration().getStreams()
         );
 
-        final DataLogger kinesisLogger = kinesisLoggerFactory.get(QueueName.SENSE_SENSORS_DATA_SPLIT);
+        final DataLogger kinesisLogger = kinesisLoggerFactory.get(QueueName.SENSE_SENSORS_DATA_FANOUT_ONE);
 
         final IRecordProcessorFactory factory = new SenseStreamSplitterFactory(
                 kinesisLogger,

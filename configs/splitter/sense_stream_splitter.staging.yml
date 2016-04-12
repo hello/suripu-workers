@@ -13,12 +13,12 @@ kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com
   streams :
     sense_sensors_data : dev_sense_sensors_data
-    sense_sensors_data_split : dev_sense_sensors_data_split
+    sense_sensors_data_split : dev_sense_sensors_data_fanout_one
 
 output:
   endpoint : https://kinesis.us-east-1.amazonaws.com
   streams :
-    sense_sensors_data_split : dev_sense_sensors_data_split
+    sense_sensors_data_split : dev_sense_sensors_data_fanout_one
 
 app_name: SenseStreamSplitConsumerDev
 

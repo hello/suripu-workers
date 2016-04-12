@@ -22,7 +22,7 @@ dynamo_db:
   tables:
       alarm_info: alarm_info
       features : features
-      ring_time_history: ring_time_history
+      ring_time_history: ring_history_by_account
       sense_events: sense_events
   endpoints:
       alarm_info: http://dynamodb.us-east-1.amazonaws.com

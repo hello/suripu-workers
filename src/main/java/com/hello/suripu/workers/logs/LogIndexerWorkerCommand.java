@@ -131,7 +131,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
         final Analytics analytics = Analytics.builder(configuration.segmentWriteKey()).build();
-        final RingTimeHistoryReadDAO ringTimeHistoryDAODynamoDB = new TempRingtimeDDB(
+        final RingTimeHistoryReadDAO ringTimeHistoryDAODynamoDB = new NonRateLimitedRingtimeDDB(
                 ringtimeHistoryClient,
                 configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.RING_TIME_HISTORY)
         );

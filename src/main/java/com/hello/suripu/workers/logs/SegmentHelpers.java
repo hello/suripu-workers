@@ -32,13 +32,14 @@ public class SegmentHelpers {
             final Boolean tagAll) {
 
         final List<MessageBuilder> alarmMessages = tagAlarms(deviceEvents, accountsWhoseAlarmRang);
-        final List<MessageBuilder> gestureMessages = tagGestures(deviceEvents, pairedAccounts);
+
 
         final List<MessageBuilder> messages = Lists.newArrayList();
         messages.addAll(alarmMessages);
 
         // TO AVOID SPAMMING SEGMENT
         if(tagAll) {
+            final List<MessageBuilder> gestureMessages = tagGestures(deviceEvents, pairedAccounts);
             messages.addAll(gestureMessages);
         }
 

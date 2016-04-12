@@ -24,9 +24,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TempRingtimeDDB implements RingTimeHistoryReadDAO {
+public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(TempRingtimeDDB.class);
+
+    /**
+     * TODO: THIS IS A GIANT COPY/PASTE.
+     * WE WILL NEED TO CLEAN UP THE OLD ONE BEFORE REMOVING THIS ONE
+     */
+    private final static Logger LOGGER = LoggerFactory.getLogger(NonRateLimitedRingtimeDDB.class);
 
     public static final String MORPHEUS_ID_ATTRIBUTE_NAME = "device_id";
     public static final String ACCOUNT_ID_ATTRIBUTE_NAME = "account_id";
@@ -39,7 +44,7 @@ public class TempRingtimeDDB implements RingTimeHistoryReadDAO {
     private final String tableName;
     private final ObjectMapper mapper;
 
-    public TempRingtimeDDB(final AmazonDynamoDB amazonDynamoDB, final String tableName) {
+    public NonRateLimitedRingtimeDDB(final AmazonDynamoDB amazonDynamoDB, final String tableName) {
         this.amazonDynamoDB = amazonDynamoDB;
         this.tableName = tableName;
         this.mapper = new ObjectMapper();

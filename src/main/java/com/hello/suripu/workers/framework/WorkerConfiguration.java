@@ -3,7 +3,7 @@ package com.hello.suripu.workers.framework;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.configuration.QueueName;
-import com.hello.suripu.coredw.configuration.KinesisConfiguration;
+import com.hello.suripu.coredw8.configuration.KinesisConfiguration;
 import com.hello.suripu.coredw8.configuration.GraphiteConfiguration;
 import io.dropwizard.Configuration;
 

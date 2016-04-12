@@ -3,19 +3,25 @@ package com.hello.suripu.workers.splitter;
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.kinesis.AmazonKinesisAsyncClient;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.collect.ImmutableMap;
+import com.hello.suripu.core.ObjectGraphRoot;
+import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
+import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.logging.DataLogger;
 import com.hello.suripu.core.logging.KinesisLoggerFactory;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
+import com.hello.suripu.workers.framework.WorkerRolloutModule;
 import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
@@ -40,6 +46,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
     @Override
     protected void run(Environment environment, Namespace namespace, SenseStreamSplitterConfiguration configuration) throws Exception {
 
+        // metrics
         if (configuration.getMetricsEnabled()) {
             final String graphiteHostName = configuration.getGraphite().getHost();
             final String apiKey = configuration.getGraphite().getApiKey();
@@ -58,19 +65,32 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
                     .build(graphite);
             reporter.start(interval, TimeUnit.SECONDS);
 
-            LOGGER.info("Metrics enabled.");
+            LOGGER.info("info=stream-splitter-metrics value=enabled.");
         } else {
-            LOGGER.warn("Metrics not enabled.");
+            LOGGER.warn("info=stream-splitter-metrics value=disabled.");
         }
 
+
+        final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
+
+        // set up feature flipper
+        final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
+
+        final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, configuration.dynamoDBConfiguration());
+        final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.FEATURES);
+        final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
+        final FeatureStore featureStore = new FeatureStore(featureDynamoDB, tableNames.get(DynamoDBTableName.FEATURES), featureNamespace);
+
+        final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
+        ObjectGraphRoot.getInstance().init(workerRolloutModule);
+
+        // set up Kinesis stream consumer
         final ImmutableMap<QueueName, String> queueNames = configuration.getQueues();
 
-        LOGGER.debug("{}", queueNames);
+        LOGGER.debug("action=get-queues queue_names={}", queueNames);
         final String queueName = queueNames.get(QueueName.SENSE_SENSORS_DATA);
-        LOGGER.info("\n\n\n!!! This worker is using the following queue: {} !!!\n\n\n", queueName);
+        LOGGER.info("\n\n\ninfo=stream-splitter-consumes-the-following-queue queue={} !!!\n\n\n", queueName);
 
-        // set up ingest stream
-        final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
         final String workerId = InetAddress.getLocalHost().getCanonicalHostName();
         final KinesisClientLibConfiguration inputKinesisConfig = new KinesisClientLibConfiguration(
                 configuration.getAppName(),
@@ -86,7 +106,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
             inputKinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST);
         }
 
-        // set output kinesis stream
+        // set up output kinesis stream
         final ClientConfiguration clientConfiguration = new ClientConfiguration();
         clientConfiguration.withConnectionTimeout(200); // in ms
         clientConfiguration.withMaxErrorRetry(1);
@@ -94,7 +114,7 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
         final AmazonKinesisAsyncClient kinesisClient = new AmazonKinesisAsyncClient(awsCredentialsProvider, clientConfiguration);
         final KinesisLoggerFactory kinesisLoggerFactory = new KinesisLoggerFactory(
                 kinesisClient,
-                configuration.getKinesisConfiguration().getStreams()
+                configuration.getKinesisOutputConfiguration().getStreams()
         );
 
         final DataLogger kinesisLogger = kinesisLoggerFactory.get(QueueName.SENSE_SENSORS_DATA_SPLIT);
@@ -104,7 +124,6 @@ public class SenseStreamSplitterCommand extends WorkerEnvironmentCommand<SenseSt
                 configuration.getMaxRecords(),
                 environment.metrics()
         );
-
 
         final Worker worker = new Worker(factory, inputKinesisConfig);
         worker.run();

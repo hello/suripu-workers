@@ -7,8 +7,6 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.logging.DataLogger;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 import org.slf4j.Logger;
@@ -26,7 +24,6 @@ public class SenseStreamSplitter extends HelloBaseRecordProcessor {
 
     private final DataLogger dataLogger;
     private final Integer maxRecords;
-    private MetricRegistry metrics;
     private String shardId = "";
 
     private final Meter capacity;
@@ -36,10 +33,9 @@ public class SenseStreamSplitter extends HelloBaseRecordProcessor {
     public SenseStreamSplitter(final DataLogger dataLogger, final Integer maxRecords, final MetricRegistry metrics) {
         this.dataLogger = dataLogger;
         this.maxRecords = maxRecords;
-        this.metrics = metrics;
-        this.capacity = this.metrics.meter(name(SenseStreamSplitter.class, "capacity"));
-        this.recordsProcessed = this.metrics.meter(name(SenseStreamSplitter.class, "records-processed"));
-        this.recordsFailed = this.metrics.meter(name(SenseStreamSplitter.class, "records-failed"));
+        this.capacity = metrics.meter(name(SenseStreamSplitter.class, "capacity"));
+        this.recordsProcessed = metrics.meter(name(SenseStreamSplitter.class, "records-processed"));
+        this.recordsFailed = metrics.meter(name(SenseStreamSplitter.class, "records-failed"));
     }
 
     @Override
@@ -50,42 +46,44 @@ public class SenseStreamSplitter extends HelloBaseRecordProcessor {
     @Override
     public void processRecords(List<Record> records, IRecordProcessorCheckpointer iRecordProcessorCheckpointer) {
         for(final Record record : records) {
-            DataInputProtos.BatchPeriodicDataWorker batchPeriodicDataWorker;
-            try {
-                batchPeriodicDataWorker = DataInputProtos.BatchPeriodicDataWorker.parseFrom(record.getData().array());
-            } catch (InvalidProtocolBufferException e) {
-                LOGGER.error("Failed parsing protobuf: {}", e.getMessage());
-                LOGGER.error("Moving to next record");
-                continue;
-            }
-
-            final String deviceId = batchPeriodicDataWorker.getData().getDeviceId();
+            final String partitionKey = record.getPartitionKey();
             this.recordsProcessed.mark();
+
             try {
-                dataLogger.put(deviceId, record.getData().array());
+                dataLogger.put(partitionKey, record.getData().array());
             } catch (Exception e) {
                 LOGGER.error("error=kinesis-insert-sense_sensors_data {}", e.getMessage());
                 this.recordsFailed.mark();
             }
-
         }
+
 
         try {
             iRecordProcessorCheckpointer.checkpoint();
         } catch (InvalidStateException e) {
-            LOGGER.error("checkpoint {}", e.getMessage());
+            LOGGER.error("error=checkpoint-invalid-state-exception error_msg={}", e.getMessage());
         } catch (ShutdownException e) {
-            LOGGER.error("Received shutdown command at checkpoint, bailing. {}", e.getMessage());
+            LOGGER.error("error=checkpoint-received-shutdown-command-bailing error_msg={}", e.getMessage());
         }
 
         final int batchCapacity = Math.round(records.size() / (float) maxRecords * 100.0f) ;
-        LOGGER.info("{} - capacity: {}%", shardId, batchCapacity);
+        LOGGER.info("shard={} batch-capacity={}%", shardId, batchCapacity);
         capacity.mark(batchCapacity);
     }
 
 
     @Override
     public void shutdown(IRecordProcessorCheckpointer iRecordProcessorCheckpointer, ShutdownReason shutdownReason) {
+        LOGGER.warn("warning=SHUTDOWN reason={}", shutdownReason.toString());
+        if(shutdownReason == ShutdownReason.TERMINATE) {
+            LOGGER.warn("warning=shutting-down-going-to-checkpoint");
+            try {
+                iRecordProcessorCheckpointer.checkpoint();
+                LOGGER.warn("warning=shutting-down-checkpoint-successfully");
+            } catch (InvalidStateException | ShutdownException e) {
+                LOGGER.error("error=shutting-down-checkpoint-failed, error_msg={}", e.getMessage());
+            }
+        }
 
     }
 }

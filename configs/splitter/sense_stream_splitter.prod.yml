@@ -1,0 +1,52 @@
+metrics_enabled: true
+debug: false
+graphite:
+  host: carbon.hostedgraphite.com
+  api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
+  reporting_interval_in_seconds: 30
+  include_metrics:
+    - io.dropwizard
+    - com.hello
+
+
+kinesis:
+  endpoint : https://kinesis.us-east-1.amazonaws.com
+  streams :
+    sense_sensors_data : sense_sensors_data
+    sense_sensors_data_split : sense_sensors_data_split
+
+output:
+  endpoint : https://kinesis.us-east-1.amazonaws.com
+  streams :
+    sense_sensors_data_split : sense_sensors_data_split
+
+app_name: SenseStreamSplitConsumerProd
+
+max_records: 300
+
+trim_horizon: true
+
+
+# Logging settings.
+logging:
+  level: INFO
+  loggers:
+    com.hello.suripu.workers: DEBUG
+  appenders:
+    - type: file
+      threshold: INFO
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-splitter.log
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-splitter-%d{yyyy-MM-dd}.log.gz
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-sense-splitter-prod
+
+
+dynamodb:
+  region: us-east-1
+  tables:
+    features: features
+  endpoints:
+    features : http://dynamodb.us-east-1.amazonaws.com

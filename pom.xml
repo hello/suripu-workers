@@ -81,11 +81,6 @@
         </dependency>
         <dependency>
             <groupId>com.hello.suripu</groupId>
-            <artifactId>suripu-coredw</artifactId>
-            <version>${suripu.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.hello.suripu</groupId>
             <artifactId>suripu-coredw8</artifactId>
             <version>${suripu.version}</version>
         </dependency>

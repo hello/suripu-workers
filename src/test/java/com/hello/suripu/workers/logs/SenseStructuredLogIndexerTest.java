@@ -1,8 +1,8 @@
-package com.hello.suripu.workers;
+package com.hello.suripu.workers.logs;
 
-import com.hello.suripu.workers.logs.SenseStructuredLogIndexer;
-import java.util.Set;
 import org.junit.Test;
+
+import java.util.Set;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;

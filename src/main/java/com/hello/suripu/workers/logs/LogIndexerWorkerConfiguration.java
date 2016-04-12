@@ -38,4 +38,11 @@ public class LogIndexerWorkerConfiguration extends WorkerConfiguration {
     public RedisConfiguration redisConfiguration() {
         return redisConfiguration;
     }
+
+    @NotNull
+    @JsonProperty("segment_write_key")
+    private String segmentWriteKey;
+    public String segmentWriteKey() {
+        return segmentWriteKey;
+    }
 }

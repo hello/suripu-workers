@@ -25,11 +25,26 @@ public class OnBoardingLogIndexer implements LogIndexer<LoggingProtos.BatchLogMe
     }
 
     @Override
+    public void collect(final LoggingProtos.BatchLogMessage batchLogMessage, final String sequenceNumber) {
+        collect(batchLogMessage);
+    }
+
+    @Override
     public Integer index() {
         synchronized (this.logs) {
             final Integer insertedCount = this.onBoardingLogDAO.batchInsertOnBoardingLog(this.logs);
             this.logs.clear();
             return insertedCount;
         }
+    }
+
+    @Override
+    public void flush() {
+        index();
+    }
+
+    @Override
+    public void shutdown() {
+
     }
 }

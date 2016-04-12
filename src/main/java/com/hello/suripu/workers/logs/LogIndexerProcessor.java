@@ -6,14 +6,15 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
-import com.google.protobuf.InvalidProtocolBufferException;
-
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.logging.LoggingProtos;
+import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
+import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
-
+import com.segment.analytics.Analytics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,9 +34,8 @@ public class LogIndexerProcessor implements IRecordProcessor {
     private final MetricRegistry metrics;
 
     private LogIndexerProcessor(
-                                final LogIndexer<LoggingProtos.BatchLogMessage> senseStructuredLogsIndexer,
-                                final LogIndexer<LoggingProtos.BatchLogMessage> onBoardingLogIndexer,
-                                final MetricRegistry metricRegistry) {
+            final MetricRegistry metricRegistry, final LogIndexer<LoggingProtos.BatchLogMessage> senseStructuredLogsIndexer,
+            final LogIndexer<LoggingProtos.BatchLogMessage> onBoardingLogIndexer) {
         this.senseStructuredLogsIndexer = senseStructuredLogsIndexer;
         this.onBoardingLogIndexer = onBoardingLogIndexer;
         this.metrics = metricRegistry;
@@ -46,11 +46,14 @@ public class LogIndexerProcessor implements IRecordProcessor {
 
     public static LogIndexerProcessor create(final SenseEventsDAO senseEventsDAO,
                                              final OnBoardingLogDAO onBoardingLogDAO,
-                                             final MetricRegistry metricRegistry) {
+                                             final MetricRegistry metricRegistry,
+                                             final Analytics analytics,
+                                             final RingTimeHistoryReadDAO ringTimeHistoryDAODynamoDB,
+                                             final MergedUserInfoDynamoDB mergedUserInfoDynamoDB) {
         return new LogIndexerProcessor(
-            new SenseStructuredLogIndexer(senseEventsDAO),
-            new OnBoardingLogIndexer(onBoardingLogDAO),
-            metricRegistry
+                metricRegistry,
+                new SenseStructuredLogIndexer(senseEventsDAO, analytics, ringTimeHistoryDAODynamoDB, mergedUserInfoDynamoDB),
+                new OnBoardingLogIndexer(onBoardingLogDAO)
         );
     }
 
@@ -67,7 +70,7 @@ public class LogIndexerProcessor implements IRecordProcessor {
                 if(batchLogMessage.hasLogType()) {
                     switch (batchLogMessage.getLogType()) {
                         case STRUCTURED_SENSE_LOG:
-                            senseStructuredLogsIndexer.collect(batchLogMessage);
+                            senseStructuredLogsIndexer.collect(batchLogMessage, record.getSequenceNumber());
                             break;
                         case ONBOARDING_LOG:
                             this.onBoardingLogIndexer.collect(batchLogMessage);

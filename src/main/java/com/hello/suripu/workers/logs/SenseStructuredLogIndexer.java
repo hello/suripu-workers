@@ -113,7 +113,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
                 alarmAccounts.addAll(queryAlarmAround(deviceEvents, pairedAccounts, 5));
             }
 
-            final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents, pairedAccounts, alarmAccounts, true);
+            final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents, pairedAccounts, alarmAccounts, false);
 
             if(!analyticsMessageBuilders.isEmpty()) {
                 LOGGER.info("action=send-to-segment count={}", analyticsMessageBuilders.size());

@@ -20,11 +20,17 @@ app_name: LogIndexerProd
 dynamo_db:
   region: us-east-1
   tables:
+      alarm_info: prod_alarm_info
       features : features
+      ring_time_history: ring_history_by_account
       sense_events: prod_sense_events
+
   endpoints:
+      alarm_info: http://dynamodb.us-east-1.amazonaws.com
       features : http://dynamodb.us-east-1.amazonaws.com
+      ring_time_history: http://dynamodb.us-east-1.amazonaws.com
       sense_events: http://dynamodb.us-east-1.amazonaws.com
+
 
 common_db:
   driverClass: org.postgresql.Driver
@@ -83,3 +89,5 @@ logging:
       # timezone: UTC
       # facility: USER
       # sendLocalName: true
+
+segment_write_key: UiFCuqdEpi6STaMCx3bo70Hii0XvWnOK

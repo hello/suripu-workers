@@ -1,7 +1,7 @@
 package com.hello.suripu.workers.timeline;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.core.configuration.NewDynamoDBConfiguration;
+import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.coredw8.configuration.S3BucketConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 

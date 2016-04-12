@@ -1,6 +1,10 @@
 package com.hello.suripu.workers.sense.lastSeen;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+<<<<<<< HEAD
+=======
+
+>>>>>>> master
 import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 

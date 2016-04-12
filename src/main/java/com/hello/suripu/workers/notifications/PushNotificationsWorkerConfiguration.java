@@ -2,6 +2,7 @@ package com.hello.suripu.workers.notifications;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Sets;
+
 import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.coredw8.configuration.PushNotificationsConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;

@@ -1,5 +1,6 @@
 package com.hello.suripu.workers.logs;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -106,6 +107,11 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
             }
 
             final Set<Long> pairedAccounts = pairedAccounts(deviceEvents);
+            for(final Long accountId : pairedAccounts) {
+                LOGGER.info("account_id={} sense_id={} created_at={} events={}",
+                        accountId, deviceEvents.deviceId, deviceEvents.createdAt, Joiner.on(",").join(deviceEvents.events));
+            }
+
             final Set<Long> alarmAccounts = Sets.newHashSet();
 
             // only query when we have an alarm event
@@ -117,7 +123,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
             final List<MessageBuilder> analyticsMessageBuilders = SegmentHelpers.tag(deviceEvents, pairedAccounts, alarmAccounts, trackAll);
 
             if(!analyticsMessageBuilders.isEmpty()) {
-                LOGGER.info("action=send-to-segment count={}", analyticsMessageBuilders.size());
+                LOGGER.info("action=send-to-segment count={} sense_id={}", analyticsMessageBuilders.size(), deviceEvents.deviceId);
             }
 
             for(MessageBuilder mb : analyticsMessageBuilders) {
@@ -140,7 +146,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
      * @param withinNumMinutes
      * @return
      */
-    public  Set<Long> queryAlarmAround(final DeviceEvents deviceEvents, final Set<Long> accountIds, final Integer withinNumMinutes) {
+    public Set<Long> queryAlarmAround(final DeviceEvents deviceEvents, final Set<Long> accountIds, final Integer withinNumMinutes) {
         final Set<Long> accountsWhoseAlarmRang = Sets.newHashSetWithExpectedSize(accountIds.size());
         final DateTime start = deviceEvents.createdAt.minusMinutes(withinNumMinutes);
         final DateTime end = deviceEvents.createdAt.plusMinutes(withinNumMinutes);

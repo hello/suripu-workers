@@ -74,7 +74,7 @@ public class SenseStreamFanout extends HelloBaseRecordProcessor {
 
     @Override
     public void shutdown(IRecordProcessorCheckpointer iRecordProcessorCheckpointer, ShutdownReason shutdownReason) {
-        LOGGER.warn("warning=SHUTDOWN reason={}", shutdownReason.toString());
+        LOGGER.warn("warning=SHUTDOWN reason={} shard={}", shutdownReason.toString(), shardId);
         if(shutdownReason == ShutdownReason.TERMINATE) {
             LOGGER.warn("warning=shutting-down-going-to-checkpoint");
             try {
@@ -83,6 +83,9 @@ public class SenseStreamFanout extends HelloBaseRecordProcessor {
             } catch (InvalidStateException | ShutdownException e) {
                 LOGGER.error("error=shutting-down-checkpoint-failed, error_msg={}", e.getMessage());
             }
+        }  else {
+            LOGGER.error("error=unknown-shutdown-reason-exit");
+            System.exit(1);
         }
 
     }

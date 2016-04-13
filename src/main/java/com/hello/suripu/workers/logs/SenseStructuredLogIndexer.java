@@ -146,6 +146,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
         final DateTime end = deviceEvents.createdAt.plusMinutes(withinNumMinutes);
         for(final Long accountId : accountIds) {
             LOGGER.info("action=get-ring-times-between start={} end={} account_id={}", start, end, accountId);
+            LOGGER.info("action=get-ring-times-between start_millis={} end_millis={} account_id={}", start.getMillis(), end.getMillis(), accountId);
             final List<RingTime> alarms = ringHistoryDAO.getRingTimesBetween(
                     deviceEvents.deviceId,
                     accountId,
@@ -153,6 +154,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
                     end);
             if(!alarms.isEmpty()) {
                 accountsWhoseAlarmRang.add(accountId);
+                LOGGER.info("action=get-ring-times-between num_results={} account_id={}", alarms.size(), accountId);
             }
         }
 

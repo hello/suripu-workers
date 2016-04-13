@@ -24,6 +24,7 @@ script:
 - cp configs/sense/sense_last_seen.prod.yml $TEMP_DIR/etc/hello/sense_last_seen.yml
 - cp configs/sense/sense_save.prod.yml $TEMP_DIR/etc/hello/sense_save.yml
 - cp configs/sense/sense_save_ddb.prod.yml $TEMP_DIR/etc/hello/sense_save_ddb.yml
+- cp configs/fanout/sense_stream_fanout.prod.yml $TEMP_DIR/etc/hello/sense_stream_fanout.yml
 - cp init/*.conf $TEMP_DIR/etc/init/
 - mvn --settings settings.xml clean test
 before_deploy:

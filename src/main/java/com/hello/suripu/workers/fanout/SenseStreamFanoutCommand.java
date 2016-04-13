@@ -53,7 +53,7 @@ public class SenseStreamFanoutCommand extends WorkerEnvironmentCommand<SenseStre
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
             final String env = (configuration.getDebug()) ? "dev" : "prod";
-            final String prefix = String.format("%s.%s.suripu-workers-sense-fanout", apiKey, env);
+            final String prefix = String.format("%s.%s.suripu-workers", apiKey, env);
 
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
 

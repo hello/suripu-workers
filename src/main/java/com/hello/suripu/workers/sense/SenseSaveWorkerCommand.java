@@ -9,13 +9,11 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
-import com.google.common.collect.ImmutableMap;
-
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
-import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.DeviceDataDAO;
@@ -26,9 +24,11 @@ import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.SensorsViewsDynamoDB;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
+import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
@@ -37,9 +37,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
-
-import io.dropwizard.jdbi.DBIFactory;
-import io.dropwizard.setup.Environment;
 
 public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<SenseSaveWorkerConfiguration> {
 

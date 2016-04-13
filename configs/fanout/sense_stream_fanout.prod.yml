@@ -1,0 +1,52 @@
+metrics_enabled: true
+debug: false
+graphite:
+  host: carbon.hostedgraphite.com
+  api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
+  reporting_interval_in_seconds: 30
+  include_metrics:
+    - io.dropwizard
+    - com.hello
+
+
+kinesis:
+  endpoint : https://kinesis.us-east-1.amazonaws.com
+  streams :
+    sense_sensors_data : sense_sensors_data
+    sense_sensors_data_fanout_one : sense_sensors_data_fanout_one
+
+output:
+  endpoint : https://kinesis.us-east-1.amazonaws.com
+  streams :
+    sense_sensors_data_fanout_one : sense_sensors_data_fanout_one
+
+app_name: SenseStreamFanoutConsumerProd
+
+max_records: 300
+
+trim_horizon: true
+
+
+# Logging settings.
+logging:
+  level: INFO
+  loggers:
+    com.hello.suripu.workers: DEBUG
+  appenders:
+    - type: file
+      threshold: INFO
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-fanout.log
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-fanout-%d{yyyy-MM-dd}.log.gz
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-sense-fanout-prod
+
+
+dynamodb:
+  region: us-east-1
+  tables:
+    features: features
+  endpoints:
+    features : http://dynamodb.us-east-1.amazonaws.com

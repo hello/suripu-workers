@@ -153,13 +153,12 @@ public class SenseSaveDDBProcessor extends HelloBaseRecordProcessor {
             }
         }
 
-
         try {
             int inserted = deviceDataDAO.batchInsertAll(deviceDataList);
 
-            if(inserted == deviceDataList.size()) {
+            if (inserted == deviceDataList.size()) {
                 LOGGER.trace("Batch saved {} data to DB", inserted);
-            }else{
+            } else {
                 LOGGER.warn("Batch save failed, save {} data using itemize insert.", inserted);
             }
 

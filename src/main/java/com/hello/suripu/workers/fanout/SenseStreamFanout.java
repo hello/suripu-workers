@@ -36,8 +36,8 @@ public class SenseStreamFanout extends HelloBaseRecordProcessor {
     private final Meter recordsFailed;
 
     private class FanoutBatchData {
-        public DataLoggerBatchPayload payload;
-        public String originalSequenceNumber;
+        DataLoggerBatchPayload payload;
+        String originalSequenceNumber;
 
         FanoutBatchData(final DataLoggerBatchPayload payload, final String originalSequenceNumber) {
             this.originalSequenceNumber = originalSequenceNumber;
@@ -86,7 +86,7 @@ public class SenseStreamFanout extends HelloBaseRecordProcessor {
 
         // process failures
         final List<FanoutBatchData> failedRecords = Lists.newArrayList();
-        if (batchPutResult.success != batchPutResult.batchSize) {
+        if (batchPutResult.numSuccesses != batchPutResult.batchSize) {
             for (int i = 0; i < batchPutResult.successPuts.size(); i++) {
                 if (!batchPutResult.successPuts.get(i)) {
                     LOGGER.error("error=fail-put-to-fanout-Kinesis, partition_key={}, shard_number={}",
@@ -101,7 +101,7 @@ public class SenseStreamFanout extends HelloBaseRecordProcessor {
             }
         }
 
-        recordsSuccess.mark(batchPutResult.success);
+        recordsSuccess.mark(batchPutResult.numSuccesses);
 
         batchData.clear();
 

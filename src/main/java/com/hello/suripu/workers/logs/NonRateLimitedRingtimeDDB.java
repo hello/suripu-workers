@@ -33,7 +33,7 @@ public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
      */
     private final static Logger LOGGER = LoggerFactory.getLogger(NonRateLimitedRingtimeDDB.class);
 
-    public static final String MORPHEUS_ID_ATTRIBUTE_NAME = "device_id";
+    public static final String SENSE_ID_ATTRIBUTE_NAME = "device_id";
     public static final String ACCOUNT_ID_ATTRIBUTE_NAME = "account_id";
     public static final String ACTUAL_RING_TIME_ATTRIBUTE_NAME = "actual_ring_time";
     public static final String EXPECTED_RING_TIME_ATTRIBUTE_NAME = "expected_ring_time";
@@ -73,18 +73,18 @@ public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
                 .withAttributeValueList(new AttributeValue().withS(senseId));
 
         queryConditions.put(ACCOUNT_ID_ATTRIBUTE_NAME, selectAccountIdCondition);
-        //queryConditions.put(MORPHEUS_ID_ATTRIBUTE_NAME, selectSenseIdCondition);
+
         final Map<String, Condition> filterConditions = Maps.newHashMap();
-        filterConditions.put(MORPHEUS_ID_ATTRIBUTE_NAME, selectSenseIdCondition);
+        filterConditions.put(SENSE_ID_ATTRIBUTE_NAME, selectSenseIdCondition);
 
         final Set<String> targetAttributeSet = Sets.newHashSet(ACCOUNT_ID_ATTRIBUTE_NAME,
-                MORPHEUS_ID_ATTRIBUTE_NAME,
+                SENSE_ID_ATTRIBUTE_NAME,
                 EXPECTED_RING_TIME_ATTRIBUTE_NAME,
                 ACTUAL_RING_TIME_ATTRIBUTE_NAME,
                 RINGTIME_OBJECT_ATTRIBUTE_NAME,
                 CREATED_AT_ATTRIBUTE_NAME);
         final List<RingTime> ringTimes = Lists.newArrayList();
-        Map<String, AttributeValue> lastEvaluatedKey = null;
+        Map<String, AttributeValue> lastEvaluatedKey;
         int maxAttempts = 1;
         int attempts = 0;
         do {
@@ -92,7 +92,6 @@ public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
                     .withQueryFilter(filterConditions)
                     .withAttributesToGet(targetAttributeSet)
                     .withLimit(50)
-                    .withExclusiveStartKey(lastEvaluatedKey)
                     .withScanIndexForward(false);
             final QueryResult queryResult = this.amazonDynamoDB.query(queryRequest);
             lastEvaluatedKey = queryResult.getLastEvaluatedKey();

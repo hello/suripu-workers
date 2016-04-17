@@ -1,15 +1,20 @@
 package com.hello.suripu.workers.logs;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.hello.suripu.core.metrics.DeviceEvents;
 import com.segment.analytics.messages.MessageBuilder;
 import com.segment.analytics.messages.TrackMessage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
 
 public class SegmentHelpers {
+
+    private final static Logger LOGGER = LoggerFactory.getLogger(SegmentHelpers.class);
 
     public final static String ALARM_RING_EVENT = "alarm:ring";
     public final static String ALARM_DISMISSED_EVENT = "alarm:dismissed";
@@ -88,6 +93,13 @@ public class SegmentHelpers {
      */
     public static List<MessageBuilder> tagAlarms(final DeviceEvents deviceEvents, final Set<Long> accountsWhoseAlarmRang) {
         final List<MessageBuilder> messages = Lists.newArrayList();
+
+
+        if(accountsWhoseAlarmRang.isEmpty()) {
+            LOGGER.warn("action=tag-alarms message=empty-account-list");
+            return messages;
+        }
+
         final ImmutableMap.Builder alarmTagsBuilder = ImmutableMap.builder();
 
         if(deviceEvents.events.contains(ALARM_RING_EVENT)) {
@@ -102,7 +114,10 @@ public class SegmentHelpers {
 
 
         final ImmutableMap alarmTags = alarmTagsBuilder.build();
+
         if(alarmTags.isEmpty()) {
+            LOGGER.info("action=tag-alarms sense_id={} events={}", deviceEvents.deviceId, Joiner.on(",").join(deviceEvents.events));
+            LOGGER.warn("action=tag-alarms message=no-alarm-tags");
             return messages;
         }
 

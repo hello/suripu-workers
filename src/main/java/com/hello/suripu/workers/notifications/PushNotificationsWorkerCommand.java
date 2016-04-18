@@ -9,15 +9,12 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
-
+import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-
-import io.dropwizard.setup.Environment;
 
 public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<PushNotificationsWorkerConfiguration> {
 
@@ -35,7 +32,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         final ImmutableMap<QueueName, String> queueNames = configuration.getQueues();
 
         LOGGER.debug("{}", queueNames);
-        final String queueName = queueNames.get(QueueName.SENSE_SENSORS_DATA);
+        final String queueName = queueNames.get(QueueName.SENSE_SENSORS_DATA_FANOUT_ONE);
         LOGGER.info("\n\n\n!!! This worker is using the following queue: {} !!!\n\n\n", queueName);
 
 

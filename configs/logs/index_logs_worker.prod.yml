@@ -22,7 +22,7 @@ dynamo_db:
   tables:
       alarm_info: prod_alarm_info
       features : features
-      ring_time_history: ring_history_by_account
+      ring_time_history: prod_ring_history_by_account
       sense_events: prod_sense_events
 
   endpoints:

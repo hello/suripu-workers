@@ -8,14 +8,14 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
-
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
+import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.algorithmintegration.NeuralNetAlgorithmOutput;
 import com.hello.suripu.core.algorithmintegration.NeuralNetEndpoint;
@@ -47,12 +47,16 @@ import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.db.util.PostgresIntegerArrayArgumentFactory;
 import com.hello.suripu.core.processors.TimelineProcessor;
 import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
-import com.hello.suripu.coredw8.db.SleepHmmDAODynamoDB;
 import com.hello.suripu.coredw8.configuration.S3BucketConfiguration;
+import com.hello.suripu.coredw8.db.SleepHmmDAODynamoDB;
 import com.hello.suripu.coredw8.db.TimelineDAODynamoDB;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.jdbi.ImmutableListContainerFactory;
+import io.dropwizard.jdbi.ImmutableSetContainerFactory;
+import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
@@ -62,12 +66,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-import io.dropwizard.jdbi.DBIFactory;
-import io.dropwizard.jdbi.ImmutableListContainerFactory;
-import io.dropwizard.jdbi.ImmutableSetContainerFactory;
-import io.dropwizard.jdbi.OptionalContainerFactory;
-import io.dropwizard.setup.Environment;
 
 /**
  * Created by pangwu on 9/23/14.
@@ -139,7 +137,7 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
 
         final AmazonDynamoDB featureDynamoDB = dynamoDBClientFactory.getForEndpoint(
                 configuration.getDynamoDBConfiguration().endpoints().get(DynamoDBTableName.FEATURES));
-        final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
+        final String featureNamespace = (configuration.isDebug()) ? "dev" : "prod";
         final FeatureStore featureStore = new FeatureStore(featureDynamoDB, "features", featureNamespace);
 
         final AmazonDynamoDB sleepHmmDynamoDbClient = dynamoDBClientFactory.getForEndpoint(
@@ -166,7 +164,7 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
             final String apiKey = configuration.getGraphite().getApiKey();
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
-            final String env = (configuration.getDebug()) ? "dev" : "prod";
+            final String env = (configuration.isDebug()) ? "dev" : "prod";
             final String prefix = String.format("%s.%s.suripu-workers-timeline", apiKey, env);
 
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
@@ -241,6 +239,9 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST);
 
+        if(configuration.isDebug()) {
+            kinesisConfig.withMetricsLevel(MetricsLevel.NONE);
+        }
 
         final IRecordProcessorFactory processFactory = new TimelineRecordProcessorFactory(timelineProcessor,
             deviceDAO,

@@ -7,6 +7,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
@@ -105,7 +106,7 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
             final String apiKey = configuration.getGraphite().getApiKey();
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
-            final String env = (configuration.getDebug()) ? "dev" : "prod";
+            final String env = (configuration.isDebug()) ? "dev" : "prod";
             final String prefix = String.format("%s.%s.suripu-workers-insights", apiKey, env);
 
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
@@ -141,12 +142,16 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);
 
+        if(configuration.isDebug()) {
+            kinesisConfig.withMetricsLevel(MetricsLevel.NONE);
+        }
+
         // setup dynamoDB clients
         final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
         final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, configuration.dynamoDBConfiguration());
 
         final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.FEATURES);
-        final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
+        final String featureNamespace = (configuration.isDebug()) ? "dev" : "prod";
         final FeatureStore featureStore = new FeatureStore(featureDynamoDB, tableNames.get(DynamoDBTableName.FEATURES), featureNamespace);
 
         final AmazonDynamoDB insightsDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.INSIGHTS);

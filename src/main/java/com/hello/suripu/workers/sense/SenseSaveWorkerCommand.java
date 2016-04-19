@@ -9,6 +9,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
@@ -63,7 +64,7 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
             final String apiKey = configuration.getGraphite().getApiKey();
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
-            final String env = (configuration.getDebug()) ? "dev" : "prod";
+            final String env = (configuration.isDebug()) ? "dev" : "prod";
             final String prefix = String.format("%s.%s.suripu-workers-sensesave", apiKey, env);
 
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
@@ -103,6 +104,10 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
             kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST);
         }
 
+        if(configuration.isDebug()) {
+            kinesisConfig.withMetricsLevel(MetricsLevel.NONE);
+        }
+
         final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, configuration.dynamoDBConfiguration());
 
 
@@ -111,7 +116,7 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
         final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
 
         final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.FEATURES);
-        final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
+        final String featureNamespace = (configuration.isDebug()) ? "dev" : "prod";
         final FeatureStore featureStore = new FeatureStore(featureDynamoDB, tableNames.get(DynamoDBTableName.FEATURES), featureNamespace);
 
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);

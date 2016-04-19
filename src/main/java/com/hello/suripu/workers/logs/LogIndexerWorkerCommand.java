@@ -11,6 +11,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
@@ -73,7 +74,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
             final String apiKey = configuration.getGraphite().getApiKey();
             final Integer interval = configuration.getGraphite().getReportingIntervalInSeconds();
 
-            final String env = (configuration.getDebug()) ? "dev" : "prod";
+            final String env = (configuration.isDebug()) ? "dev" : "prod";
             final String prefix = String.format("%s.%s.suripu-workers-logindexer", apiKey, env);
 
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
@@ -109,7 +110,11 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST);
 
-        final String featureNamespace = (configuration.getDebug()) ? "dev" : "prod";
+        if(configuration.isDebug()) {
+            kinesisConfig.withMetricsLevel(MetricsLevel.NONE);
+        }
+
+        final String featureNamespace = (configuration.isDebug()) ? "dev" : "prod";
         final AmazonDynamoDB featuresDynamoDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.FEATURES, FeatureStore.class);
         final FeatureStore featureStore = new FeatureStore(
             featuresDynamoDBClient,

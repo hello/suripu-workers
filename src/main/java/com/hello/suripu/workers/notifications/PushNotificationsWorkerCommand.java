@@ -6,18 +6,16 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorF
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
-
+import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-
-import io.dropwizard.setup.Environment;
 
 public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<PushNotificationsWorkerConfiguration> {
 
@@ -48,6 +46,11 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         kinesisConfig.withMaxRecords(configuration.getMaxRecords());
         kinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
         kinesisConfig.withInitialPositionInStream(InitialPositionInStream.LATEST); // only moving forward, we don't want to replay push notifications
+
+        if(configuration.isDebug()) {
+            kinesisConfig.withMetricsLevel(MetricsLevel.NONE);
+        }
+
         final IRecordProcessorFactory factory = new PushNotificationsProcessorFactory(environment, configuration, awsCredentialsProvider);
         final Worker worker = new Worker(factory, kinesisConfig);
         worker.run();

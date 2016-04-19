@@ -57,5 +57,5 @@ public class WorkerConfiguration extends Configuration {
     @JsonProperty("debug")
     private Boolean debug = Boolean.FALSE;
 
-    public Boolean getDebug() { return debug; }
+    public Boolean isDebug() { return debug; }
 }

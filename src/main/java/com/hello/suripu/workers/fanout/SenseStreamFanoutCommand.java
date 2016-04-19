@@ -99,6 +99,8 @@ public class SenseStreamFanoutCommand extends WorkerEnvironmentCommand<SenseStre
                 workerId);
         inputKinesisConfig.withMaxRecords(configuration.getMaxRecords());
         inputKinesisConfig.withKinesisEndpoint(configuration.getKinesisEndpoint());
+        inputKinesisConfig.withIdleTimeBetweenReadsInMillis(configuration.getIdleTimeBetweenReadsInMillis());
+
 
         if (configuration.getTrimHorizon()) {
             inputKinesisConfig.withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON);

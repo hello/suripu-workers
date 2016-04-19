@@ -22,6 +22,12 @@ public class SenseStreamFanoutConfiguration extends WorkerConfiguration {
         return maxRecords;
     }
 
+    @Valid
+    @NotNull
+    @JsonProperty("idle_time_between_reads_millis")
+    private long idleTimeBetweenReadsInMillis;
+    public long getIdleTimeBetweenReadsInMillis() { return idleTimeBetweenReadsInMillis; }
+
     @JsonProperty("trim_horizon")
     private Boolean trimHorizon = Boolean.TRUE;
     public Boolean getTrimHorizon() {return trimHorizon;}
@@ -39,6 +45,5 @@ public class SenseStreamFanoutConfiguration extends WorkerConfiguration {
     public NewDynamoDBConfiguration dynamoDBConfiguration(){
         return dynamoDBConfiguration;
     }
-
 
 }

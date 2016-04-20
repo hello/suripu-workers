@@ -26,11 +26,6 @@ import java.util.Set;
 
 public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
 
-
-    /**
-     * TODO: THIS IS A GIANT COPY/PASTE.
-     * WE WILL NEED TO CLEAN UP THE OLD ONE BEFORE REMOVING THIS ONE
-     */
     private final static Logger LOGGER = LoggerFactory.getLogger(NonRateLimitedRingtimeDDB.class);
 
     public static final String SENSE_ID_ATTRIBUTE_NAME = "device_id";
@@ -54,14 +49,46 @@ public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
     public List<RingTime> getRingTimesBetween(final String senseId, final Long accountId,
                                               final DateTime startTime,
                                               final DateTime endTime) {
+
+        /**
+         * WARNING
+         *
+         * THIS METHOD HAS BEEN MODIFIED FROM THE ORIGINAL AND HAS ADDITIONAL CHECKS IN PLACE
+         * THAT WERE NOT PRESENT ORIGINALLY.
+         * THEY CAN'T BE SUBSTITUTED BLINDLY
+         */
+
+
+        /**
+         *
+         * Example:
+         * 1. Alarm is scheduled to ring at 8:00 am:
+         *    - expected time = 8:00am
+         *    - actual time = 8:00am
+         * 2. Smart alarm worker overrides alarm:
+         *    - expected time = 8:00 am
+         *    - actual time = 7:45
+         * 3. Query is executed after Sense uploads alarm event log, at 7:46
+         * 4. Query params should be to query from (7:46 - 5) to (7:46 + 5)
+         * 5. !!! Since range key is expected ringtime, we need to extend query range to account for the next expected ring time
+         * 6. Query params get extended from (7:46-5) to (7:46 + 60) --> to include the 8:00 expected time
+         * 7. Additional filter for actual ring time is added for (7:46 - 5) to (7:46 +5)
+         */
         final Map<String, Condition> queryConditions = Maps.newHashMap();
-        final List<AttributeValue> values = Lists.newArrayList();
-        values.add(new AttributeValue().withN(String.valueOf(startTime.getMillis())));
-        values.add(new AttributeValue().withN(String.valueOf(endTime.getMillis())));
+
+        final DateTime correctedEndTime = endTime.plusMinutes(60);
+        final List<AttributeValue> values = Lists.newArrayList(
+            new AttributeValue().withN(String.valueOf(startTime.getMillis())),
+
+            // We look at most an hour after latest possible ringtime (endTime)
+            // to account for smart alarms
+            new AttributeValue().withN(String.valueOf(correctedEndTime.getMillis()))
+        );
 
         final Condition selectDateCondition = new Condition()
                 .withComparisonOperator(ComparisonOperator.BETWEEN.toString())
                 .withAttributeValueList(values);
+
         queryConditions.put(EXPECTED_RING_TIME_ATTRIBUTE_NAME, selectDateCondition);
 
         final Condition selectAccountIdCondition = new Condition()
@@ -72,10 +99,22 @@ public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
                 .withComparisonOperator(ComparisonOperator.EQ)
                 .withAttributeValueList(new AttributeValue().withS(senseId));
 
+
+        // This filters by actual ring time
+        final Condition actualRingtimeCondition = new Condition()
+                .withComparisonOperator(ComparisonOperator.BETWEEN)
+                .withAttributeValueList(Lists.newArrayList(
+                        new AttributeValue().withN(String.valueOf(startTime.getMillis())),
+                        new AttributeValue().withN(String.valueOf(endTime.getMillis()))
+                ));
+
         queryConditions.put(ACCOUNT_ID_ATTRIBUTE_NAME, selectAccountIdCondition);
 
         final Map<String, Condition> filterConditions = Maps.newHashMap();
         filterConditions.put(SENSE_ID_ATTRIBUTE_NAME, selectSenseIdCondition);
+
+        // This filter is what allows us to query for when it rang, not when it was scheduled
+        filterConditions.put(ACTUAL_RING_TIME_ATTRIBUTE_NAME, actualRingtimeCondition);
 
         final Set<String> targetAttributeSet = Sets.newHashSet(ACCOUNT_ID_ATTRIBUTE_NAME,
                 SENSE_ID_ATTRIBUTE_NAME,
@@ -96,7 +135,7 @@ public class NonRateLimitedRingtimeDDB implements RingTimeHistoryReadDAO {
             final QueryResult queryResult = this.amazonDynamoDB.query(queryRequest);
             lastEvaluatedKey = queryResult.getLastEvaluatedKey();
 
-            if (queryResult.getItems() == null) {
+            if (queryResult.getItems() == null || queryResult.getItems().isEmpty()) {
                 return Collections.EMPTY_LIST;
             }
 

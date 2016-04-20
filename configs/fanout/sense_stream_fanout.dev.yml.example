@@ -22,7 +22,7 @@ output:
 
 app_name: SenseStreamFanoutConsumerDev
 
-max_records: 100
+max_records: 10000
 idle_time_between_reads_millis: 2000
 
 trim_horizon: true

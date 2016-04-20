@@ -15,7 +15,7 @@ import javax.validation.constraints.NotNull;
 public class SenseStreamFanoutConfiguration extends WorkerConfiguration {
     @Valid
     @NotNull
-    @Max(1000)
+    @Max(10000)
     @JsonProperty("max_records")
     private Integer maxRecords;
     public Integer getMaxRecords() {

@@ -1,6 +1,5 @@
 package com.hello.suripu.workers.logs;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -107,12 +106,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
             }
 
             final Set<Long> pairedAccounts = pairedAccounts(deviceEvents);
-            for(final Long accountId : pairedAccounts) {
-                LOGGER.info("account_id={} sense_id={} created_at={} events={}",
-                        accountId, deviceEvents.deviceId, deviceEvents.createdAt, Joiner.on(",").join(deviceEvents.events));
-            }
-
-            final Set<Long> alarmAccounts = Sets.newHashSet();
+            final Set<Long> alarmAccounts = Sets.newHashSetWithExpectedSize(pairedAccounts.size());
 
             // only query when we have an alarm event
             if (hasAlarm(deviceEvents.events)) {

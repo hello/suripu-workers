@@ -28,6 +28,8 @@ import com.hello.suripu.core.db.SenseEventsDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
+import com.hello.suripu.workers.framework.WorkerLaunchHistoryDAO;
+import com.hello.suripu.workers.framework.WorkerLaunchHistoryDDB;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
 import com.segment.analytics.Analytics;
 import io.dropwizard.jdbi.DBIFactory;
@@ -154,6 +156,15 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
                 ringTimeHistoryDAODynamoDB,
                 mergedUserInfoDynamoDB
         );
+
+        // TODO: get this from config once core is deployed with the DynamoDBTableName
+        final AmazonDynamoDB workerLaunchHistoryClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.WORKER_LAUNCH_HISTORY, WorkerLaunchHistoryDAO.class);
+
+        final WorkerLaunchHistoryDAO workerLaunchHistoryDAO = WorkerLaunchHistoryDDB.createWithTable(
+                workerLaunchHistoryClient,
+                configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.WORKER_LAUNCH_HISTORY)
+        );
+        workerLaunchHistoryDAO.register(configuration.getAppName(), workerId);
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }

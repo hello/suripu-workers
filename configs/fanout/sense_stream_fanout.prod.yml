@@ -22,9 +22,9 @@ output:
 
 app_name: SenseStreamFanoutConsumerProd
 
-# grab max number of records and wait for 10 secs between reads
-max_records: 10000
-idle_time_between_reads_millis: 10000
+# grab 1000 records and wait for 5 secs between reads
+max_records: 1000
+idle_time_between_reads_millis: 5000
 
 
 trim_horizon: false

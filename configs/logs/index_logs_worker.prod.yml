@@ -24,13 +24,14 @@ dynamo_db:
       features : features
       ring_time_history: prod_ring_history_by_account
       sense_events: prod_sense_events
+      worker_launch_history: prod_worker_launch_history
 
   endpoints:
-      alarm_info: http://dynamodb.us-east-1.amazonaws.com
-      features : http://dynamodb.us-east-1.amazonaws.com
-      ring_time_history: http://dynamodb.us-east-1.amazonaws.com
-      sense_events: http://dynamodb.us-east-1.amazonaws.com
-
+      alarm_info: https://dynamodb.us-east-1.amazonaws.com
+      features : https://dynamodb.us-east-1.amazonaws.com
+      ring_time_history: https://dynamodb.us-east-1.amazonaws.com
+      sense_events: https://dynamodb.us-east-1.amazonaws.com
+      worker_launch_history: https://dynamodb.us-east-1.amazonaws.com
 
 common_db:
   driverClass: org.postgresql.Driver

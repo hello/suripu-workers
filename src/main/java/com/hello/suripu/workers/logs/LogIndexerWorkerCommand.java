@@ -158,10 +158,12 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         );
 
         // TODO: get this from config once core is deployed with the DynamoDBTableName
-        final AmazonDynamoDB workerLaunchHistoryClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.FEATURES, WorkerLaunchHistoryDAO.class);
-        final String tableName = "worker_launch_history";
+        final AmazonDynamoDB workerLaunchHistoryClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.WORKER_LAUNCH_HISTORY, WorkerLaunchHistoryDAO.class);
 
-        final WorkerLaunchHistoryDAO workerLaunchHistoryDAO = WorkerLaunchHistoryDDB.createWithTable(workerLaunchHistoryClient, tableName);
+        final WorkerLaunchHistoryDAO workerLaunchHistoryDAO = WorkerLaunchHistoryDDB.createWithTable(
+                workerLaunchHistoryClient,
+                configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.WORKER_LAUNCH_HISTORY)
+        );
         workerLaunchHistoryDAO.register(configuration.getAppName(), workerId);
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();

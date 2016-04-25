@@ -21,14 +21,12 @@ import com.hello.suripu.core.db.AggregateSleepScoreDAODynamoDB;
 import com.hello.suripu.core.db.CalibrationDAO;
 import com.hello.suripu.core.db.CalibrationDynamoDB;
 import com.hello.suripu.core.db.DeviceDAO;
-import com.hello.suripu.core.db.DeviceDataDAO;
 import com.hello.suripu.core.db.DeviceDataDAODynamoDB;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.InsightsDAODynamoDB;
 import com.hello.suripu.core.db.MarketingInsightsSeenDAODynamoDB;
 import com.hello.suripu.core.db.QuestionResponseReadDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
-import com.hello.suripu.core.db.TrackerMotionDAO;
 import com.hello.suripu.core.db.TrendsInsightsDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.preferences.AccountPreferencesDAO;
@@ -68,7 +66,6 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
 
         final DBIFactory factory = new DBIFactory();
         final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
-        final DBI sensorDBI = factory.build(environment, configuration.getSensorsDB(), "postgresql-sensors");
         final DBI insightsDBI = factory.build(environment, configuration.getInsightsDB(), "postgresql-insights");
 
         commonDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getCommonDB().getDriverClass()));
@@ -79,17 +76,6 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
 
         final AccountDAO accountDAO = commonDBI.onDemand(AccountDAOImpl.class);
         final DeviceDAO deviceDAO = commonDBI.onDemand(DeviceDAO.class);
-
-
-        sensorDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getSensorsDB().getDriverClass()));
-        sensorDBI.registerContainerFactory(new ImmutableListContainerFactory());
-        sensorDBI.registerContainerFactory(new ImmutableSetContainerFactory());
-        sensorDBI.registerContainerFactory(new OptionalContainerFactory());
-        sensorDBI.registerArgumentFactory(new JodaArgumentFactory());
-
-
-        final DeviceDataDAO deviceDataDAO = sensorDBI.onDemand(DeviceDataDAO.class);
-        final TrackerMotionDAO trackerMotionDAO = sensorDBI.onDemand(TrackerMotionDAO.class);
 
         insightsDBI.registerArgumentFactory(new OptionalArgumentFactory(configuration.getInsightsDB().getDriverClass()));
         insightsDBI.registerContainerFactory(new ImmutableListContainerFactory());
@@ -196,10 +182,8 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
 
         final IRecordProcessorFactory processorFactory = new InsightsGeneratorFactory(
                 accountDAO,
-                deviceDataDAO,
                 deviceDataDAODynamoDB,
                 deviceDAO,
-                trackerMotionDAO,
                 aggregateSleepScoreDAODynamoDB,
                 insightsDAODynamoDB,
                 trendsInsightsDAO,

@@ -16,6 +16,7 @@ import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.NotificationSubscriptionsReadDAO;
+import com.hello.suripu.core.notifications.PushNotificationEventDynamoDB;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
@@ -51,14 +52,18 @@ public class PushNotificationsProcessorFactory implements IRecordProcessorFactor
         commonDBI.registerContainerFactory(new OptionalContainerFactory());
         commonDBI.registerArgumentFactory(new JodaArgumentFactory());
 
-        final NotificationSubscriptionsReadDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsReadDAO.class);
-        final AmazonSNS amazonSNS = new AmazonSNSClient(awsCredentialsProvider);
-        final MobilePushNotificationProcessor pushNotificationProcessor = new MobilePushNotificationProcessor(amazonSNS, notificationSubscriptionsDAO);
-
         final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
         final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
         final ClientConfiguration clientConfig = new ClientConfiguration().withConnectionTimeout(200).withMaxErrorRetry(1).withMaxConnections(100);
         final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfig, configuration.dynamoDBConfiguration());
+
+        final NotificationSubscriptionsReadDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsReadDAO.class);
+        final AmazonSNS amazonSNS = new AmazonSNSClient(awsCredentialsProvider);
+        final AmazonDynamoDB pushNotificationDynamoDBClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.PUSH_NOTIFICATION_EVENT);
+        final PushNotificationEventDynamoDB pushNotificationEventDynamoDB = new PushNotificationEventDynamoDB(
+                pushNotificationDynamoDBClient,
+                configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.PUSH_NOTIFICATION_EVENT));
+        final MobilePushNotificationProcessor pushNotificationProcessor = new MobilePushNotificationProcessor(amazonSNS, notificationSubscriptionsDAO, pushNotificationEventDynamoDB);
 
         final String featureNamespace = (configuration.isDebug()) ? "dev" : "prod";
         final AmazonDynamoDB featuresDynamoDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.FEATURES, FeatureStore.class);

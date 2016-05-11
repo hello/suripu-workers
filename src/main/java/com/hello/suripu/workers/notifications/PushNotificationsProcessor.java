@@ -15,6 +15,7 @@ import com.hello.suripu.core.models.Sensor;
 import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.notifications.HelloPushMessage;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
+import com.hello.suripu.core.notifications.PushNotificationEvent;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.preferences.PreferenceName;
 import com.hello.suripu.core.util.DateTimeUtil;
@@ -124,7 +125,13 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
                 final Optional<HelloPushMessage> messageOptional = getMostImportantSensorState(currentRoomState);
                 if(messageOptional.isPresent()) {
                     LOGGER.info("Sending push notifications to user: {}. Message: {}", userInfo.accountId, messageOptional.get());
-                    mobilePushNotificationProcessor.push(userInfo.accountId, messageOptional.get());
+                    final PushNotificationEvent event = PushNotificationEvent.newBuilder()
+                            .withAccountId(userInfo.accountId)
+                            .withHelloPushMessage(messageOptional.get())
+                            .withSenseId(senseId)
+                            .withType("room_conditions")
+                            .build();
+                    mobilePushNotificationProcessor.push(event);
                     sent.add(key);
                 }
                 break;

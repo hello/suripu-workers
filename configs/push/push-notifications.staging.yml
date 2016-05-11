@@ -80,10 +80,12 @@ dynamodb:
     alarm_info: prod_alarm_info
     features: features
     preferences: prod_preferences
+    push_notification_event: push_notification_event
   endpoints:
     alarm_info: http://dynamodb.us-east-1.amazonaws.com
     features : http://dynamodb.us-east-1.amazonaws.com
     preferences: http://dynamodb.us-east-1.amazonaws.com
+    push_notification_event: http://dynamodb.us-east-1.amazonaws.com
 
 push_notifications:
   arns:

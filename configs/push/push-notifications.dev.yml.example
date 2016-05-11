@@ -73,10 +73,12 @@ dynamodb:
     alarm_info: alarm_info
     features: features
     preferences: preferences
+    push_notification_event: push_notification_event
   endpoints:
     alarm_info: http://localhost:7777
     features : http://localhost:7777
     preferences: http://localhost:7777
+    push_notification_event: http://localhost:7777
 
 push_notifications:
   arns:

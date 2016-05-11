@@ -120,7 +120,7 @@ dynamo_db:
       preferences : prod_preferences
       sleep_score : prod_sleep_score
       device_data : prod_sense_data
-      marketing_insights_seen : prod_marketing_insight_seen
+      marketing_insights_seen : prod_marketing_insights_seen
 
 
   endpoints:

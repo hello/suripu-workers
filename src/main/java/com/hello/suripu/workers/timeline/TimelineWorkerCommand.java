@@ -11,10 +11,10 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.algorithmintegration.NeuralNetAlgorithmOutput;
@@ -50,6 +50,7 @@ import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.coredw8.configuration.S3BucketConfiguration;
 import com.hello.suripu.coredw8.db.SleepHmmDAODynamoDB;
 import com.hello.suripu.coredw8.db.TimelineDAODynamoDB;
+import com.hello.suripu.coredw8.metrics.RegexMetricFilter;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
 import io.dropwizard.jdbi.DBIFactory;
@@ -167,13 +168,16 @@ public class TimelineWorkerCommand extends WorkerEnvironmentCommand<TimelineWork
             final String env = (configuration.isDebug()) ? "dev" : "prod";
             final String prefix = String.format("%s.%s.suripu-workers-timeline", apiKey, env);
 
+            final ImmutableList<String> metrics = ImmutableList.copyOf(configuration.getGraphite().getIncludeMetrics());
+            final RegexMetricFilter metricFilter = new RegexMetricFilter(metrics);
+
             final Graphite graphite = new Graphite(new InetSocketAddress(graphiteHostName, 2003));
 
             final GraphiteReporter reporter = GraphiteReporter.forRegistry(environment.metrics())
                 .prefixedWith(prefix)
                 .convertRatesTo(TimeUnit.SECONDS)
                 .convertDurationsTo(TimeUnit.MILLISECONDS)
-                .filter(MetricFilter.ALL)
+                .filter(metricFilter)
                 .build(graphite);
             reporter.start(interval, TimeUnit.SECONDS);
 

@@ -5,14 +5,13 @@ import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
-
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.api.ble.SenseCommandProtos;
 import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.KeyStore;
@@ -24,7 +23,7 @@ import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeat;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-
+import com.hello.suripu.workers.pill.notifications.PillBatteryNotificationProcessor;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -47,8 +46,8 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
     private final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB; // will replace with interface as soon as we have validated this works
     private final Boolean savePillHeartbeat;
+    private final PillBatteryNotificationProcessor pillBatteryNotificationProcessor;
 
-    private MetricRegistry metrics;
     private final Meter messagesProcessed;
     private final Meter batchSaved;
 
@@ -59,7 +58,9 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                  final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
                                  final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB,
                                  final Boolean savePillHeartbeat,
-                                 final MetricRegistry metrics) {
+                                 final MetricRegistry metrics,
+                                 final PillBatteryNotificationProcessor pillBatteryNotificationProcessor)
+    {
         this.pillDataIngestDAO = pillDataIngestDAO;
         this.batchSize = batchSize;
         this.pillKeyStore = pillKeyStore;
@@ -67,7 +68,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.pillHeartBeatDAODynamoDB = pillHeartBeatDAODynamoDB;
         this.savePillHeartbeat = savePillHeartbeat;
-
+        this.pillBatteryNotificationProcessor = pillBatteryNotificationProcessor;
 
         this.messagesProcessed = metrics.meter(name(SavePillDataProcessor.class, "messages-processed"));
         this.batchSaved = metrics.meter(name(SavePillDataProcessor.class, "batch-saved"));
@@ -201,6 +202,12 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                             LOGGER.trace("Received heartbeat for pill_id {}, last_updated {}", pillId, lastUpdated);
                             pillHeartBeats.add(pillHeartBeat);
                         }
+
+                        // If battery low, send push notification
+                        final Optional<UserInfo> userInfoOptional = userInfos.get(pillId);
+                        if (userInfoOptional != null && userInfoOptional.isPresent()) {
+                            pillBatteryNotificationProcessor.sendLowBatteryNotification(pillId, userInfoOptional.get(), batteryLevel, DateTime.now(DateTimeZone.UTC));
+                        }
                     }
                 }
             }
@@ -250,4 +257,5 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
             }
         }
     }
+
 }

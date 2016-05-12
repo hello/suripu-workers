@@ -8,6 +8,8 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionIn
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
+import com.amazonaws.services.sns.AmazonSNS;
+import com.amazonaws.services.sns.AmazonSNSClient;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
@@ -25,10 +27,14 @@ import com.hello.suripu.core.db.PillDataIngestDAO;
 import com.hello.suripu.core.db.PillHeartBeatDAO;
 import com.hello.suripu.core.db.TrackerMotionDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
+import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
+import com.hello.suripu.core.notifications.NotificationSubscriptionsReadDAO;
+import com.hello.suripu.core.notifications.PushNotificationEventDynamoDB;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
+import com.hello.suripu.workers.pill.notifications.PillBatteryNotificationProcessor;
 import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -143,16 +149,27 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
             pillDataIngestDAO = sensorsDBI.onDemand(TrackerMotionDAO.class);
         }
 
+        final AmazonSNS amazonSNS = new AmazonSNSClient(awsCredentialsProvider);
+        final NotificationSubscriptionsReadDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsReadDAO.class);
+        final AmazonDynamoDB pushNotificationDynamoDBClient = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.PUSH_NOTIFICATION_EVENT);
+        final PushNotificationEventDynamoDB pushNotificationEventDynamoDB = new PushNotificationEventDynamoDB(
+                pushNotificationDynamoDBClient,
+                configuration.dynamoDBConfiguration().tables().get(DynamoDBTableName.PUSH_NOTIFICATION_EVENT));
+
+        final MobilePushNotificationProcessor mobilePushNotificationProcessor = new MobilePushNotificationProcessor(amazonSNS, notificationSubscriptionsDAO, pushNotificationEventDynamoDB);
+        final PillBatteryNotificationProcessor pillBatteryNotificationProcessor = PillBatteryNotificationProcessor.create(
+                configuration.getBatteryNotificationConfig(), mobilePushNotificationProcessor, environment.metrics());
+
         final IRecordProcessorFactory processorFactory = new SavePillDataProcessorFactory(
-            pillDataIngestDAO,
-            configuration.getBatchSize(),
-            mergedUserInfoDynamoDB,
-            pillKeyStore,
-            deviceDAO,
-            pillHeartBeatDAODynamoDB,
-            savePillHeartBeat,
-            environment.metrics()
-        );
+                pillDataIngestDAO,
+                configuration.getBatchSize(),
+                mergedUserInfoDynamoDB,
+                pillKeyStore,
+                deviceDAO,
+                pillHeartBeatDAODynamoDB,
+                savePillHeartBeat,
+                environment.metrics(),
+                pillBatteryNotificationProcessor);
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();
     }

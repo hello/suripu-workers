@@ -3,6 +3,7 @@ package com.hello.suripu.workers.pill;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
+import com.hello.suripu.workers.pill.notifications.PillBatteryNotificationConfig;
 import io.dropwizard.db.DataSourceFactory;
 
 import javax.validation.Valid;
@@ -53,5 +54,15 @@ public class PillWorkerConfiguration extends WorkerConfiguration {
     private NewDynamoDBConfiguration dynamoDBConfiguration;
     public NewDynamoDBConfiguration dynamoDBConfiguration(){
         return dynamoDBConfiguration;
+    }
+
+    @Valid
+    @JsonProperty("battery_notification")
+    private PillBatteryNotificationConfig batteryNotificationConfig;
+    public PillBatteryNotificationConfig getBatteryNotificationConfig() {
+        if (batteryNotificationConfig == null) {
+            return new PillBatteryNotificationConfig();
+        }
+        return batteryNotificationConfig;
     }
 }

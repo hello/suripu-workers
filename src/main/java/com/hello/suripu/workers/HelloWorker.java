@@ -1,6 +1,7 @@
 package com.hello.suripu.workers;
 
 import com.hello.suripu.workers.alarm.AlarmWorkerCommand;
+import com.hello.suripu.workers.fanout.SenseStreamFanoutCommand;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 import com.hello.suripu.workers.insights.InsightsGeneratorWorkerCommand;
 import com.hello.suripu.workers.logs.LogIndexerWorkerCommand;
@@ -9,8 +10,6 @@ import com.hello.suripu.workers.notifications.PushNotificationsWorkerCommand;
 import com.hello.suripu.workers.pill.PillWorkerCommand;
 import com.hello.suripu.workers.sense.SenseSaveWorkerCommand;
 import com.hello.suripu.workers.sense.lastSeen.SenseLastSeenWorkerCommand;
-import com.hello.suripu.workers.fanout.SenseStreamFanoutCommand;
-import com.hello.suripu.workers.timeline.TimelineWorkerCommand;
 import io.dropwizard.Application;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
@@ -37,7 +36,6 @@ public class HelloWorker extends Application<WorkerConfiguration> {
         bootstrap.addCommand(new AlarmWorkerCommand("smart_alarm", "Start smart alarm worker"));
         bootstrap.addCommand(new LogIndexerWorkerCommand("index_logs", "Indexes logs from Kinesis stream into searchify index"));
         bootstrap.addCommand(new InsightsGeneratorWorkerCommand("insights_generator", "generate insights for users"));
-        bootstrap.addCommand(new TimelineWorkerCommand("timeline", "generate timeline for users"));
         bootstrap.addCommand(new PushNotificationsWorkerCommand("push", "send push notifications"));
         bootstrap.addCommand(new TimelineLogCommand("timeline_log", "timeline log"));
         bootstrap.addCommand(new SenseStreamFanoutCommand("sense_stream_fanout", "fanout sense stream"));

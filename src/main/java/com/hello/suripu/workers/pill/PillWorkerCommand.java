@@ -8,9 +8,9 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionIn
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
-
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
@@ -31,6 +31,7 @@ import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.coredw8.metrics.RegexMetricFilter;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
+import com.hello.suripu.workers.notifications.PushNotificationKinesisProducer;
 import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -148,15 +149,26 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
             pillDataIngestDAO = sensorsDBI.onDemand(TrackerMotionDAO.class);
         }
 
+        final KinesisProducer kinesisProducer = new KinesisProducer();
+        final String pushNotificationStreamName = queueNames.get("push_notifications"); // TODO queuename
+        if (pushNotificationStreamName == null) {
+            LOGGER.error("error=no_push_notification_queue");
+            throw new Exception("No push notification kinesis stream found in config.");
+        }
+        final PushNotificationKinesisProducer pushNotificationKinesisProducer = new PushNotificationKinesisProducer(pushNotificationStreamName, kinesisProducer);
+
+
         final IRecordProcessorFactory processorFactory = new SavePillDataProcessorFactory(
-            pillDataIngestDAO,
-            configuration.getBatchSize(),
-            mergedUserInfoDynamoDB,
-            pillKeyStore,
-            deviceDAO,
-            pillHeartBeatDAODynamoDB,
-            savePillHeartBeat,
-            environment.metrics()
+                pillDataIngestDAO,
+                configuration.getBatchSize(),
+                mergedUserInfoDynamoDB,
+                pillKeyStore,
+                deviceDAO,
+                pillHeartBeatDAODynamoDB,
+                savePillHeartBeat,
+                environment.metrics(),
+                configuration.getBatteryNotificationThreshold(),
+                pushNotificationKinesisProducer
         );
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();

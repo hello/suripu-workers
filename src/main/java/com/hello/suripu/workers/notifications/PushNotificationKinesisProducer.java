@@ -1,7 +1,6 @@
 package com.hello.suripu.workers.notifications;
 
 import com.amazonaws.services.kinesis.AmazonKinesis;
-import com.amazonaws.services.kinesis.model.PutRecordResult;
 import com.amazonaws.services.kinesis.model.PutRecordsRequest;
 import com.amazonaws.services.kinesis.model.PutRecordsRequestEntry;
 import com.amazonaws.services.kinesis.model.PutRecordsResult;
@@ -38,12 +37,7 @@ public class PushNotificationKinesisProducer {
             throw new IllegalArgumentException("userPushNotification must have senseId.");
         }
     }
-
-    public void putNotification(final PushNotification.UserPushNotification userPushNotification) {
-        validateNotification(userPushNotification);
-        final PutRecordResult result = amazonKinesis.putRecord(streamName, ByteBuffer.wrap(userPushNotification.toByteArray()), userPushNotification.getSenseId());
-    }
-
+    
     public List<PushNotification.UserPushNotification> putNotifications(final List<PushNotification.UserPushNotification> userPushNotifications) {
         final List<List<PushNotification.UserPushNotification>> partitions = Lists.partition(userPushNotifications, 500);
         final List<PushNotification.UserPushNotification> failedPuts = new ArrayList<>();

@@ -3,12 +3,13 @@ package com.hello.suripu.workers.pill;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.kinesis.AmazonKinesis;
+import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
-import com.amazonaws.services.kinesis.producer.KinesisProducer;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import com.google.common.collect.ImmutableList;
@@ -149,13 +150,13 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
             pillDataIngestDAO = sensorsDBI.onDemand(TrackerMotionDAO.class);
         }
 
-        final KinesisProducer kinesisProducer = new KinesisProducer();
+        final AmazonKinesis amazonKinesis = new AmazonKinesisClient(awsCredentialsProvider);
         final String pushNotificationStreamName = queueNames.get(QueueName.PUSH_NOTIFICATIONS);
         if (pushNotificationStreamName == null) {
             LOGGER.error("error=no_push_notification_queue");
             throw new Exception("No push notification kinesis stream found in config.");
         }
-        final PushNotificationKinesisProducer pushNotificationKinesisProducer = new PushNotificationKinesisProducer(pushNotificationStreamName, kinesisProducer);
+        final PushNotificationKinesisProducer pushNotificationKinesisProducer = new PushNotificationKinesisProducer(pushNotificationStreamName, amazonKinesis);
 
 
         final IRecordProcessorFactory processorFactory = new SavePillDataProcessorFactory(

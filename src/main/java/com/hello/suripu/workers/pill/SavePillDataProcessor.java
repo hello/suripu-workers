@@ -191,6 +191,8 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
 
             // only write heartbeat for postgres worker
             if (this.savePillHeartbeat) {
+                final List<PushNotification.UserPushNotification> pushNotifications = new ArrayList<>();
+
                 // Loop again for HeartBeat
                 for (final SenseCommandProtos.pill_data data : pillData) {
                     final String pillId = data.getDeviceId();
@@ -223,16 +225,16 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                                 .setBatteryPercent(batteryLevel)
                                                 .setPillId(pillId))
                                         .build();
-                                try {
-                                    pushNotificationKinesisProducer.putNotification(userPushNotification);
-                                } catch (Exception e) {
-                                    LOGGER.error("{}", e);
-                                }
+                                pushNotifications.add(userPushNotification);
                             }
                         }
                     }
                 }
+
+                pushNotificationKinesisProducer.putNotifications(pushNotifications);
+
             }
+
         } catch (Exception e) {
             LOGGER.error("Failed processing pill: {}", e.getMessage());
             LOGGER.error("Failed processing pill: {}", e);

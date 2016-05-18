@@ -150,7 +150,7 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
         }
 
         final KinesisProducer kinesisProducer = new KinesisProducer();
-        final String pushNotificationStreamName = queueNames.get("push_notifications"); // TODO queuename
+        final String pushNotificationStreamName = queueNames.get(QueueName.PUSH_NOTIFICATIONS);
         if (pushNotificationStreamName == null) {
             LOGGER.error("error=no_push_notification_queue");
             throw new Exception("No push notification kinesis stream found in config.");

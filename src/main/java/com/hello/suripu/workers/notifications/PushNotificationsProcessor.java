@@ -15,6 +15,7 @@ import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.PushNotificationEvent;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.preferences.PreferenceName;
+import com.hello.suripu.workers.WorkerFeatureFlipper;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 import com.hello.suripu.workers.protobuf.notifications.PushNotification;
 import org.joda.time.DateTime;
@@ -22,6 +23,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 
 public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
@@ -95,6 +97,12 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
     }
 
     private void sendNotification(final PushNotification.UserPushNotification userPushNotification) {
+        if (!userPushNotification.hasAccountId() || !userPushNotification.hasSenseId()) {
+            LOGGER.warn("warning=require_sense_id_and_account_id account_id={} sense_id={}",
+                    userPushNotification.getAccountId(), userPushNotification.getSenseId());
+            return;
+        }
+
         final Long accountId = userPushNotification.getAccountId();
         final String senseId = userPushNotification.getSenseId();
         final Optional<UserInfo> userInfoOptional = mergedUserInfoDynamoDB.getInfo(senseId, accountId);
@@ -108,6 +116,15 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
             LOGGER.error("error=could_not_get_timezone account_id={} sense_id={}", accountId, senseId);
             return;
         }
+
+        final boolean pushNotificationsEnabled = flipper.userFeatureActive(
+                WorkerFeatureFlipper.PUSH_NOTIFICATIONS_ENABLED, accountId, Collections.<String>emptyList());
+        if (!pushNotificationsEnabled) {
+            LOGGER.debug("push_notifications_enabled=false account_id={}", accountId);
+            return;
+        }
+
+        LOGGER.info("push_notifications_enabled=true account_id={}", accountId);
 
         final DateTimeZone userTimeZone = userInfoOptional.get().timeZone.get();
         final DateTime nowUserTime = DateTime.now(userTimeZone);

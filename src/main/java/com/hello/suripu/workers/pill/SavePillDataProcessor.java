@@ -123,7 +123,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
             if (!pillIds.isEmpty()) {
                 final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(pillIds);
                 if(keys.isEmpty()) {
-                    LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing");
+                    LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing. pill_ids={}", pillIds);
                     System.exit(1);
                 }
 

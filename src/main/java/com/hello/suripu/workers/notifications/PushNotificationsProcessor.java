@@ -1,34 +1,28 @@
 package com.hello.suripu.workers.notifications;
 
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
-import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
-import com.hello.suripu.core.models.Calibration;
-import com.hello.suripu.core.models.CurrentRoomState;
-import com.hello.suripu.core.models.Sensor;
+import com.hello.suripu.core.db.responses.Response;
 import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.notifications.HelloPushMessage;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.PushNotificationEvent;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.preferences.PreferenceName;
-import com.hello.suripu.core.util.DateTimeUtil;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
+import com.hello.suripu.workers.protobuf.notifications.PushNotification;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
-import org.joda.time.format.DateTimeFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
 
@@ -36,34 +30,52 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
 
     private final MobilePushNotificationProcessor mobilePushNotificationProcessor;
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
-
     private final AccountPreferencesDynamoDB accountPreferencesDynamoDB;
-    private final ImmutableSet<Integer> activeHours;
-    private final Set<String> sent = Sets.newHashSet();
+    private final PushNotificationsWorkerConfiguration pushNotificationsWorkerConfiguration;
 
     public PushNotificationsProcessor(
             final MobilePushNotificationProcessor mobilePushNotificationProcessor,
             final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
             final AccountPreferencesDynamoDB accountPreferencesDynamoDB,
-            final Set<Integer> activeHours) {
+            final PushNotificationsWorkerConfiguration pushNotificationsWorkerConfiguration)
+    {
         this.mobilePushNotificationProcessor = mobilePushNotificationProcessor;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.accountPreferencesDynamoDB = accountPreferencesDynamoDB;
-        this.activeHours = ImmutableSet.copyOf(activeHours);
+        this.pushNotificationsWorkerConfiguration =  pushNotificationsWorkerConfiguration;
     }
+
+
+    private enum NotificationType {
+        PILL_BATTERY
+    }
+
 
     @Override
     public void initialize(String s) {
 
     }
 
+
+    private PushNotification.UserPushNotification parseProtobuf(final Record record) throws InvalidProtocolBufferException {
+        final PushNotification.UserPushNotification pushNotification = PushNotification.UserPushNotification.parseFrom(record.getData().array());
+        if (!pushNotification.hasAccountId()) {
+            throw new IllegalArgumentException("Protobuf must contain accountId");
+        }
+        if (!pushNotification.hasSenseId()) {
+            throw new IllegalArgumentException("Protobuf must contain senseId");
+        }
+        return pushNotification;
+    }
+
+
     @Override
     public void processRecords(final List<Record> records, final IRecordProcessorCheckpointer iRecordProcessorCheckpointer) {
+
         for(final Record record : records) {
-            DataInputProtos.BatchPeriodicDataWorker batchPeriodicDataWorker;
             try {
-                batchPeriodicDataWorker = DataInputProtos.BatchPeriodicDataWorker.parseFrom(record.getData().array());
-                sendMessage(batchPeriodicDataWorker.getData());
+                final PushNotification.UserPushNotification pushNotification = parseProtobuf(record);
+                sendNotification(pushNotification);
             } catch (InvalidProtocolBufferException e) {
                 LOGGER.error("Failed parsing protobuf: {}", e.getMessage());
                 LOGGER.error("Moving to next record");
@@ -73,89 +85,79 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
             }
         }
 
-        // We do not checkpoint since we are using LATEST strategy, only going through new messages
-    }
-
-
-    /**
-     * Send push notifications if conditions warrant it and within the hours
-     * @param batched_periodic_data
-     */
-    private void sendMessage(final DataInputProtos.batched_periodic_data batched_periodic_data) {
-        final String senseId = batched_periodic_data.getDeviceId();
-        final List<UserInfo> userInfos = mergedUserInfoDynamoDB.getInfo(senseId);
-        for(final UserInfo userInfo : userInfos) {
-
-            if(!userHasPushNotificationsEnabled(userInfo.accountId)) {
-                continue;
-            }
-
-            final Optional<DateTimeZone> dateTimeZoneOptional = userInfo.timeZone;
-            if(!dateTimeZoneOptional.isPresent()) {
-                LOGGER.warn("No timezone for account: {} paired to Sense: {}", userInfo.accountId, senseId);
-                continue;
-            }
-
-            final DateTime nowInLocalTimeZone = DateTime.now().withZone(dateTimeZoneOptional.get());
-            if(!activeHours.contains(nowInLocalTimeZone.getHourOfDay())) {
-                continue;
-            }
-
-            final String key = String.format("%s-%s", String.valueOf(userInfo.accountId), nowInLocalTimeZone.toString(DateTimeFormat.forPattern(DateTimeUtil.DYNAMO_DB_DATE_FORMAT)));
-            if(sent.contains(key)) {
-                LOGGER.info("Account {}, already received push notification: {}", userInfo.accountId, key);
-                continue;
-            }
-
-            if(!accountPreferencesDynamoDB.isEnabled(userInfo.accountId, PreferenceName.PUSH_ALERT_CONDITIONS)) {
-                continue;
-            }
-
-            // TODO: write to cache to avoid sending multiple notifications
-            for(DataInputProtos.periodic_data data: batched_periodic_data.getDataList()) {
-                final Long timestampMillis = data.getUnixTime() * 1000L;
-                final DateTime roundedDateTime = new DateTime(timestampMillis, DateTimeZone.UTC).withSecondOfMinute(0);
-                final DateTime now = DateTime.now(DateTimeZone.UTC);
-                final CurrentRoomState currentRoomState = CurrentRoomState.fromRawData(data.getTemperature(), data.getHumidity(), data.getDustMax(), data.getLight(), data.getAudioPeakBackgroundEnergyDb(), data.getAudioPeakDisturbanceEnergyDb(),
-                        roundedDateTime.getMillis(),
-                        data.getFirmwareVersion(),
-                        now,
-                        10,
-                        Optional.of(Calibration.createDefault(data.getDeviceId()))); // TODO: adjust threshold
-                final Optional<HelloPushMessage> messageOptional = getMostImportantSensorState(currentRoomState);
-                if(messageOptional.isPresent()) {
-                    LOGGER.info("Sending push notifications to user: {}. Message: {}", userInfo.accountId, messageOptional.get());
-                    final PushNotificationEvent event = PushNotificationEvent.newBuilder()
-                            .withAccountId(userInfo.accountId)
-                            .withHelloPushMessage(messageOptional.get())
-                            .withSenseId(senseId)
-                            .withType("room_conditions")
-                            .build();
-                    mobilePushNotificationProcessor.push(event);
-                    sent.add(key);
-                }
-                break;
-            }
+        try {
+            iRecordProcessorCheckpointer.checkpoint();
+        } catch (InvalidStateException e) {
+            LOGGER.error("error=InvalidStateException exception={}", e);
+        } catch (ShutdownException e) {
+            LOGGER.error("error=ShutdownException exception={}", e);
         }
     }
 
-    /**
-     * Prioritizes conditions alerts based on Sensors
-     * @param currentRoomState
-     * @return
-     */
-    private Optional<HelloPushMessage> getMostImportantSensorState(final CurrentRoomState currentRoomState) {
-        final HashSet<CurrentRoomState.State.Condition> notificationStates = Sets.newHashSet(CurrentRoomState.State.Condition.ALERT, CurrentRoomState.State.Condition.WARNING);
+    private void sendNotification(final PushNotification.UserPushNotification userPushNotification) {
+        final Long accountId = userPushNotification.getAccountId();
+        final String senseId = userPushNotification.getSenseId();
+        final Optional<UserInfo> userInfoOptional = mergedUserInfoDynamoDB.getInfo(senseId, accountId);
 
-        if(notificationStates.contains(currentRoomState.temperature.condition)) {
-            return Optional.of(HelloPushMessage.fromSensors(currentRoomState.temperature.message, Sensor.TEMPERATURE));
+        if(!accountPreferencesDynamoDB.isEnabled(accountId, PreferenceName.PUSH_ALERT_CONDITIONS)) {
+            LOGGER.debug("push_notification_status=disabled account_id={}", accountId);
+            return;
         }
 
-        if(notificationStates.contains(currentRoomState.humidity.condition)) {
-            return Optional.of(HelloPushMessage.fromSensors(currentRoomState.humidity.message, Sensor.HUMIDITY));
+        if (!userInfoOptional.isPresent() || !userInfoOptional.get().timeZone.isPresent()) {
+            LOGGER.error("error=could_not_get_timezone account_id={} sense_id={}", accountId, senseId);
+            return;
         }
 
-        return Optional.absent();
+        final DateTimeZone userTimeZone = userInfoOptional.get().timeZone.get();
+        final DateTime nowUserTime = DateTime.now(userTimeZone);
+        final DateTime nowUTC = new DateTime(nowUserTime, DateTimeZone.UTC);
+
+        PushNotificationEvent pushNotificationEvent = null;
+
+        if (userPushNotification.hasPillBatteryLow()) {
+            final NotificationConfig pillBatteryConfig = pushNotificationsWorkerConfiguration.getPillBatteryConfig();
+            if (shouldSendNotification(accountId, nowUserTime, pillBatteryConfig, NotificationType.PILL_BATTERY)) {
+                pushNotificationEvent = PushNotificationEvent.newBuilder()
+                        .withAccountId(accountId)
+                        .withType(NotificationType.PILL_BATTERY.name())
+                        .withTimestamp(nowUTC)
+                        // TODO figure out what body/target/details to use
+                        .withHelloPushMessage(new HelloPushMessage("body", "target", "details"))
+                        .build();
+            }
+        }
+        // TODO rest of the push notifications
+
+        if (pushNotificationEvent != null) {
+            mobilePushNotificationProcessor.push(pushNotificationEvent);
+        }
+    }
+
+    protected boolean shouldSendNotification(final Long accountId,
+                                             final DateTime nowUserLocalTime,
+                                             final NotificationConfig notificationConfig,
+                                             final NotificationType notificationType)
+    {
+        final Integer minHour = notificationConfig.getMinHourOfDay();
+        final Integer maxHour = notificationConfig.getMaxHourOfDay();
+        final Integer daysBetweenNotifications = notificationConfig.getDaysBetweenNotifications();
+        final DateTime nowUTC = new DateTime(nowUserLocalTime, DateTimeZone.UTC);
+
+        // Ensure we send within the correct window
+        if (nowUserLocalTime.hourOfDay().get() < minHour || nowUserLocalTime.hourOfDay().get() > maxHour) {
+            LOGGER.debug("battery_notification_status=not_sent reason=wrong_time_of_day local_hour={} account_id={}",
+                    nowUserLocalTime.hourOfDay().get(), accountId);
+            return false;
+        }
+
+        final Response<List<PushNotificationEvent>> sentNotificationsResponse = mobilePushNotificationProcessor.
+                getPushNotificationEventDynamoDB()
+                .query(accountId, nowUTC.minusDays(daysBetweenNotifications), nowUTC.plusMinutes(10), notificationType.name());
+
+        // If we couldn't successfully query, don't send a notification, just to be safe.
+        // Also only send a notification if we haven't sent one within a specified time.
+        return (sentNotificationsResponse.status == Response.Status.SUCCESS) && sentNotificationsResponse.data.isEmpty();
     }
 
     @Override

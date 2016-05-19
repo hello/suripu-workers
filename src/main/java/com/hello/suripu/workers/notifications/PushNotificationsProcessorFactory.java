@@ -82,6 +82,6 @@ public class PushNotificationsProcessorFactory implements IRecordProcessorFactor
         final AmazonDynamoDB accountPreferencesDynamoDBClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.PREFERENCES);
         final AccountPreferencesDynamoDB accountPreferencesDynamoDB = AccountPreferencesDynamoDB.create(accountPreferencesDynamoDBClient, tableNames.get(DynamoDBTableName.PREFERENCES));
 
-        return new PushNotificationsProcessor(pushNotificationProcessor, mergedUserInfoDynamoDB, accountPreferencesDynamoDB, configuration.getActiveHours());
+        return new PushNotificationsProcessor(pushNotificationProcessor, mergedUserInfoDynamoDB, accountPreferencesDynamoDB, configuration);
     }
 }

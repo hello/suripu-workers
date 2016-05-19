@@ -120,13 +120,15 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
 
         try {
             // Fetch data from Dynamo and DB
-            final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(pillIds);
-            if(keys.isEmpty()) {
-                LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing");
-                System.exit(1);
-            }
+            if (!pillIds.isEmpty()) {
+                final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(pillIds);
+                if(keys.isEmpty()) {
+                    LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing");
+                    System.exit(1);
+                }
 
-            pillKeys.putAll(keys);
+                pillKeys.putAll(keys);
+            }
 
             // get account_ids associated with the pill external_ids
             for (final String pillId : pillIds) {

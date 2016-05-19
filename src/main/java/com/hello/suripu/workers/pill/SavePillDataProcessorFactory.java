@@ -8,6 +8,7 @@ import com.hello.suripu.core.db.KeyStore;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.PillDataIngestDAO;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
+import com.hello.suripu.workers.notifications.PushNotificationKinesisProducer;
 
 public class SavePillDataProcessorFactory implements IRecordProcessorFactory {
 
@@ -19,6 +20,8 @@ public class SavePillDataProcessorFactory implements IRecordProcessorFactory {
     private final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB;
     private final Boolean savePillHeartBeat;
     private final MetricRegistry metricRegistry;
+    private final int batteryNotificationThreshold;
+    private final PushNotificationKinesisProducer pushNotificationKinesisProducer;
 
     public SavePillDataProcessorFactory(
             final PillDataIngestDAO pillDataIngestDAO,
@@ -28,7 +31,10 @@ public class SavePillDataProcessorFactory implements IRecordProcessorFactory {
             final DeviceDAO deviceDAO,
             final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB,
             final Boolean savePillHeartBeat,
-            final MetricRegistry metricRegistry) {
+            final MetricRegistry metricRegistry,
+            final int batteryNotificationThreshold,
+            final PushNotificationKinesisProducer pushNotificationKinesisProducer)
+    {
         this.pillDataIngestDAO = pillDataIngestDAO;
         this.batchSize = batchSize;
         this.mergedUserInfoDynamoDB= mergedUserInfoDynamoDB;
@@ -37,10 +43,13 @@ public class SavePillDataProcessorFactory implements IRecordProcessorFactory {
         this.pillHeartBeatDAODynamoDB = pillHeartBeatDAODynamoDB;
         this.savePillHeartBeat = savePillHeartBeat;
         this.metricRegistry = metricRegistry;
+        this.batteryNotificationThreshold = batteryNotificationThreshold;
+        this.pushNotificationKinesisProducer = pushNotificationKinesisProducer;
     }
 
     @Override
     public IRecordProcessor createProcessor() {
-        return new SavePillDataProcessor(pillDataIngestDAO, batchSize, pillKeyStore, deviceDAO, mergedUserInfoDynamoDB, pillHeartBeatDAODynamoDB, savePillHeartBeat, metricRegistry);
+        return new SavePillDataProcessor(pillDataIngestDAO, batchSize, pillKeyStore, deviceDAO, mergedUserInfoDynamoDB,
+                pillHeartBeatDAODynamoDB, savePillHeartBeat, metricRegistry, batteryNotificationThreshold, pushNotificationKinesisProducer);
     }
 }

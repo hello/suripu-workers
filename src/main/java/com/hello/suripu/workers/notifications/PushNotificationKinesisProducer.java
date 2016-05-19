@@ -25,26 +25,34 @@ public class PushNotificationKinesisProducer {
     private final String streamName;
     private final AmazonKinesis amazonKinesis;
 
+    private static final int MAX_PUT_RECORDS_SIZE = 500;
+
 
     public PushNotificationKinesisProducer(final String streamName, final AmazonKinesis amazonKinesis) {
         this.streamName = streamName;
         this.amazonKinesis = amazonKinesis;
     }
 
-    private void validateNotification(final PushNotification.UserPushNotification userPushNotification) {
-        if (!userPushNotification.hasSenseId()) {
-            LOGGER.error("error=no_sense_id account_id={}", userPushNotification.getAccountId());
-            throw new IllegalArgumentException("userPushNotification must have senseId.");
-        }
-    }
-    
+    /**
+     * Attempt to insert all UserPushNotifications into the kinesis stream.
+     * @return List of notifications that failed to be added to the stream.
+     */
     public List<PushNotification.UserPushNotification> putNotifications(final List<PushNotification.UserPushNotification> userPushNotifications) {
-        final List<List<PushNotification.UserPushNotification>> partitions = Lists.partition(userPushNotifications, 500);
+        // Can only insert a limited number of kinesis records at a time.
+        final List<List<PushNotification.UserPushNotification>> partitions = Lists.partition(userPushNotifications, MAX_PUT_RECORDS_SIZE);
         final List<PushNotification.UserPushNotification> failedPuts = new ArrayList<>();
         for (final List<PushNotification.UserPushNotification> partition : partitions) {
              failedPuts.addAll(putNotificationsImpl(partition));
         }
         return failedPuts;
+    }
+
+
+    private void validateNotification(final PushNotification.UserPushNotification userPushNotification) {
+        if (!userPushNotification.hasSenseId()) {
+            LOGGER.error("error=no_sense_id account_id={}", userPushNotification.getAccountId());
+            throw new IllegalArgumentException("userPushNotification must have senseId.");
+        }
     }
 
     private List<PushNotification.UserPushNotification> putNotificationsImpl(final List<PushNotification.UserPushNotification> userPushNotifications) {

@@ -137,6 +137,7 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
                         .withType(NotificationType.PILL_BATTERY.name())
                         .withTimestamp(nowUTC)
                         // TODO figure out what body/target/details to use
+                        // TODO externalize this text to a DB
                         .withHelloPushMessage(new HelloPushMessage("body", "target", "details"))
                         .build();
             }

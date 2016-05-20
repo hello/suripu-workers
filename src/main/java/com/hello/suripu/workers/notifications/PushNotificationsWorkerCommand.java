@@ -33,7 +33,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         final ImmutableMap<QueueName, String> queueNames = configuration.getQueues();
 
         LOGGER.debug("{}", queueNames);
-        final String queueName = queueNames.get(QueueName.SENSE_SENSORS_DATA_FANOUT_ONE);
+        final String queueName = queueNames.get(QueueName.PUSH_NOTIFICATIONS);
         LOGGER.info("\n\n\n!!! This worker is using the following queue: {} !!!\n\n\n", queueName);
 
 

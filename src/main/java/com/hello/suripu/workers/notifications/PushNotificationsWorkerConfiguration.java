@@ -53,4 +53,9 @@ public class PushNotificationsWorkerConfiguration extends WorkerConfiguration {
     @JsonProperty("active_hours")
     private Set<Integer> activeHours = Sets.newHashSet();
     public Set<Integer> getActiveHours() {return activeHours;}
+
+    @Valid
+    @JsonProperty("pill_battery")
+    private NotificationConfig pillBatteryConfig;
+    public NotificationConfig getPillBatteryConfig() { return pillBatteryConfig; }
 }

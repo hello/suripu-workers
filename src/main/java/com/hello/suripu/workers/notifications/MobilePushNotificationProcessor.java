@@ -5,6 +5,7 @@ import com.amazonaws.services.sns.model.PublishRequest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.models.MobilePushRegistration;
 import com.hello.suripu.core.notifications.NotificationSubscriptionsReadDAO;
 import org.slf4j.Logger;
@@ -25,8 +26,8 @@ class MobilePushNotificationProcessor {
     private final NotificationSubscriptionsReadDAO dao;
     private final PushNotificationEventDynamoDB pushNotificationEventDynamoDB;
 
-    public MobilePushNotificationProcessor(final AmazonSNS sns, final NotificationSubscriptionsReadDAO dao,
-                                           final PushNotificationEventDynamoDB pushNotificationEventDynamoDB) {
+    MobilePushNotificationProcessor(final AmazonSNS sns, final NotificationSubscriptionsReadDAO dao,
+                                    final PushNotificationEventDynamoDB pushNotificationEventDynamoDB) {
         this.sns = sns;
         this.dao = dao;
         this.pushNotificationEventDynamoDB = pushNotificationEventDynamoDB;
@@ -37,7 +38,6 @@ class MobilePushNotificationProcessor {
     }
 
     public void push(final PushNotificationEvent event) {
-
         // We often want at-most-once delivery of push notifications, so we insert the record to DDB first.
         // That way if something later in this method fails, we won't accidentally send the same notification twice.
         final boolean successfullyInserted = pushNotificationEventDynamoDB.insert(event);
@@ -71,21 +71,20 @@ class MobilePushNotificationProcessor {
         }
     }
 
+    // https://developer.apple.com/library/ios/documentation/NetworkingInternet/Conceptual/RemoteNotificationsPG/Chapters/TheNotificationPayload.html#//apple_ref/doc/uid/TP40008194-CH107-SW1
     private Optional<String> makeAPNSMessage(final HelloPushMessage message) {
         final Map<String, String> messageMap = new HashMap<>();
-        final Map<String, String> content = new HashMap<>();
-        final Map<String, Object> appleMessageMap = new HashMap<>();
-        final Map<String, Object> appMessageMap = new HashMap<>();
 
-        content.put("body", message.body);
-        content.put("target", message.target);
-        content.put("details", message.details);
-
-
-        appMessageMap.put("alert", content);
-        appMessageMap.put("sound", "default");
-
-        appleMessageMap.put("aps", appMessageMap);
+        final Map<String, Object> appleMessageMap = ImmutableMap.<String, Object>of(
+                "view", message.target,
+                "aps", ImmutableMap.of(
+                        "sound", "default",
+                        "alert", ImmutableMap.of(
+                                "title", message.body,
+                                "body", message.details
+                        )
+                )
+        );
 
         final ObjectMapper mapper = new ObjectMapper();
 

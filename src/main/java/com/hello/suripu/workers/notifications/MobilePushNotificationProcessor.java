@@ -6,10 +6,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.hello.suripu.core.models.MobilePushRegistration;
-import com.hello.suripu.core.notifications.HelloPushMessage;
 import com.hello.suripu.core.notifications.NotificationSubscriptionsReadDAO;
-import com.hello.suripu.core.notifications.PushNotificationEvent;
-import com.hello.suripu.core.notifications.PushNotificationEventDynamoDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +18,7 @@ import java.util.Map;
  * Created by jakepiccolo on 5/19/16.
  */
 class MobilePushNotificationProcessor {
+
     private final static Logger LOGGER = LoggerFactory.getLogger(MobilePushNotificationProcessor.class);
 
     private final AmazonSNS sns;
@@ -34,12 +32,11 @@ class MobilePushNotificationProcessor {
         this.pushNotificationEventDynamoDB = pushNotificationEventDynamoDB;
     }
 
-    PushNotificationEventDynamoDB getPushNotificationEventDynamoDB() {
+    public PushNotificationEventDynamoDB getPushNotificationEventDynamoDB() {
         return pushNotificationEventDynamoDB;
     }
 
-    void push(final PushNotificationEvent event) {
-
+    public void push(final PushNotificationEvent event) {
         // We often want at-most-once delivery of push notifications, so we insert the record to DDB first.
         // That way if something later in this method fails, we won't accidentally send the same notification twice.
         final boolean successfullyInserted = pushNotificationEventDynamoDB.insert(event);

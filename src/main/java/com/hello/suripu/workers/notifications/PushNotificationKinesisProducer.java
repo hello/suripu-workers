@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -56,7 +55,7 @@ public class PushNotificationKinesisProducer {
     }
 
     private List<PushNotification.UserPushNotification> putNotificationsImpl(final List<PushNotification.UserPushNotification> userPushNotifications) {
-        final Collection<PutRecordsRequestEntry> entries = new ArrayList<>(userPushNotifications.size());
+        final List<PutRecordsRequestEntry> entries = new ArrayList<>(userPushNotifications.size());
         for (final PushNotification.UserPushNotification notification : userPushNotifications) {
             validateNotification(notification);
             final PutRecordsRequestEntry requestEntry = new PutRecordsRequestEntry()

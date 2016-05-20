@@ -10,8 +10,6 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.responses.Response;
 import com.hello.suripu.core.models.UserInfo;
-import com.hello.suripu.core.notifications.HelloPushMessage;
-import com.hello.suripu.core.notifications.PushNotificationEvent;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.preferences.PreferenceName;
 import com.hello.suripu.workers.WorkerFeatureFlipper;

@@ -77,6 +77,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
                 .withSenseDAOs(deviceDataDAODynamoDB, deviceDAO)
                 .withInsightsDAO(trendsInsightsDAO)
                 .withDynamoDBDAOs(scoreDAODynamoDB, insightsDAODynamoDB, sleepStatsDAODynamoDB)
+                .withAccountReadDAO(accountDAO)
                 .withAccountInfoProcessor(accountInfoProcessor)
                 .withLightData(lightData)
                 .withWakeStdDevData(wakeStdDevData)

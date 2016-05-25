@@ -82,6 +82,7 @@ kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com
   streams :
     batch_pill_data : batch_pill_data
+    push_notifications : push_notifications
 
 app_name: SavePillDataConsumerProd
 

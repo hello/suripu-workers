@@ -54,4 +54,9 @@ public class PillWorkerConfiguration extends WorkerConfiguration {
     public NewDynamoDBConfiguration dynamoDBConfiguration(){
         return dynamoDBConfiguration;
     }
+
+    @Valid
+    @JsonProperty("battery_notification_threshold")
+    private Integer batteryNotificationThreshold = 10;
+    public Integer getBatteryNotificationThreshold() { return batteryNotificationThreshold; }
 }

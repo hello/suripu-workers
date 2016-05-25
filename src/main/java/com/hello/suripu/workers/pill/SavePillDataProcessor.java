@@ -5,14 +5,13 @@ import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
-
-import com.codahale.metrics.Meter;
-import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.api.ble.SenseCommandProtos;
 import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.KeyStore;
@@ -24,7 +23,9 @@ import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeat;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-
+import com.hello.suripu.workers.notifications.PushNotificationKinesisProducer;
+import com.hello.suripu.workers.protobuf.notifications.DeviceStatus;
+import com.hello.suripu.workers.protobuf.notifications.PushNotification;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -47,6 +48,8 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
     private final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB; // will replace with interface as soon as we have validated this works
     private final Boolean savePillHeartbeat;
+    private final int batteryNotificationThreshold;
+    private final PushNotificationKinesisProducer pushNotificationKinesisProducer;
 
     private MetricRegistry metrics;
     private final Meter messagesProcessed;
@@ -59,7 +62,10 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                  final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
                                  final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB,
                                  final Boolean savePillHeartbeat,
-                                 final MetricRegistry metrics) {
+                                 final MetricRegistry metrics,
+                                 final int batteryNotificationThreshold,
+                                 final PushNotificationKinesisProducer pushNotificationKinesisProducer)
+    {
         this.pillDataIngestDAO = pillDataIngestDAO;
         this.batchSize = batchSize;
         this.pillKeyStore = pillKeyStore;
@@ -67,6 +73,8 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.pillHeartBeatDAODynamoDB = pillHeartBeatDAODynamoDB;
         this.savePillHeartbeat = savePillHeartbeat;
+        this.batteryNotificationThreshold = batteryNotificationThreshold;
+        this.pushNotificationKinesisProducer = pushNotificationKinesisProducer;
 
 
         this.messagesProcessed = metrics.meter(name(SavePillDataProcessor.class, "messages-processed"));
@@ -112,13 +120,15 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
 
         try {
             // Fetch data from Dynamo and DB
-            final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(pillIds);
-            if(keys.isEmpty()) {
-                LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing");
-                System.exit(1);
-            }
+            if (!pillIds.isEmpty()) {
+                final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(pillIds);
+                if(keys.isEmpty()) {
+                    LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing. pill_ids={}", pillIds);
+                    System.exit(1);
+                }
 
-            pillKeys.putAll(keys);
+                pillKeys.putAll(keys);
+            }
 
             // get account_ids associated with the pill external_ids
             for (final String pillId : pillIds) {
@@ -183,6 +193,8 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
 
             // only write heartbeat for postgres worker
             if (this.savePillHeartbeat) {
+                final List<PushNotification.UserPushNotification> pushNotifications = new ArrayList<>();
+
                 // Loop again for HeartBeat
                 for (final SenseCommandProtos.pill_data data : pillData) {
                     final String pillId = data.getDeviceId();
@@ -201,9 +213,30 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                             LOGGER.trace("Received heartbeat for pill_id {}, last_updated {}", pillId, lastUpdated);
                             pillHeartBeats.add(pillHeartBeat);
                         }
+
+                        // If battery level below threshold, send push notification
+                        if (batteryLevel < batteryNotificationThreshold) {
+                            final String senseId = pillIdToSenseId.get(data.getDeviceId());
+                            final Optional<UserInfo> userInfoOptional = userInfos.get(pillId);
+                            if (senseId != null && userInfoOptional.isPresent()) {
+                                final PushNotification.UserPushNotification userPushNotification = PushNotification.UserPushNotification
+                                        .newBuilder()
+                                        .setSenseId(senseId)
+                                        .setAccountId(userInfoOptional.get().accountId)
+                                        .setPillBatteryLow(DeviceStatus.PillBatteryLow.newBuilder()
+                                                .setBatteryPercent(batteryLevel)
+                                                .setPillId(pillId))
+                                        .build();
+                                pushNotifications.add(userPushNotification);
+                            }
+                        }
                     }
                 }
+
+                pushNotificationKinesisProducer.putNotifications(pushNotifications);
+
             }
+
         } catch (Exception e) {
             LOGGER.error("Failed processing pill: {}", e.getMessage());
             LOGGER.error("Failed processing pill: {}", e);

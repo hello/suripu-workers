@@ -10,9 +10,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import com.codahale.metrics.annotation.Timed;
 import com.hello.suripu.api.ble.SenseCommandProtos;
-import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.AccountReadDAO;
-import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.models.Account;
 import com.hello.suripu.core.models.DeviceAccountPair;

@@ -40,7 +40,7 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
 
     private final static Logger LOGGER = LoggerFactory.getLogger(SenseSaveWorkerCommand.class);
 
-        private boolean updateLastSeen = true;
+    private boolean updateLastSeen = true;
 
     public SenseSaveWorkerCommand(String name, String description) {
         super(name, description);
@@ -122,12 +122,9 @@ public final class SenseSaveWorkerCommand extends WorkerEnvironmentCommand<Sense
 
         final MergedUserInfoDynamoDB mergedUserInfoDynamoDB = new MergedUserInfoDynamoDB(alarmInfoDynamoDBClient , tableNames.get(DynamoDBTableName.ALARM_INFO));
 
-        final DeviceDataIngestDAO deviceDataIngestDAO;
-        final IRecordProcessorFactory factory;
         final AmazonDynamoDB deviceDataDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.DEVICE_DATA);
-        deviceDataIngestDAO = new DeviceDataDAODynamoDB(deviceDataDynamoDB, tableNames.get(DynamoDBTableName.DEVICE_DATA));
-        factory = new SenseSaveDDBProcessorFactory(mergedUserInfoDynamoDB, deviceDataIngestDAO, configuration.getMaxRecords(), environment.metrics());
-
+        final DeviceDataIngestDAO deviceDataIngestDAO = new DeviceDataDAODynamoDB(deviceDataDynamoDB, tableNames.get(DynamoDBTableName.DEVICE_DATA));
+        final IRecordProcessorFactory factory = new SenseSaveDDBProcessorFactory(mergedUserInfoDynamoDB, deviceDataIngestDAO, configuration.getMaxRecords(), environment.metrics());
 
         final Worker worker = new Worker(factory, kinesisConfig);
         worker.run();

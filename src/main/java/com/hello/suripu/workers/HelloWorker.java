@@ -10,12 +10,14 @@ import com.hello.suripu.workers.notifications.PushNotificationsWorkerCommand;
 import com.hello.suripu.workers.pill.PillWorkerCommand;
 import com.hello.suripu.workers.sense.SenseSaveWorkerCommand;
 import com.hello.suripu.workers.sense.lastSeen.SenseLastSeenWorkerCommand;
-import io.dropwizard.Application;
-import io.dropwizard.setup.Bootstrap;
-import io.dropwizard.setup.Environment;
+
 import org.joda.time.DateTimeZone;
 
 import java.util.TimeZone;
+
+import io.dropwizard.Application;
+import io.dropwizard.setup.Bootstrap;
+import io.dropwizard.setup.Environment;
 
 public class HelloWorker extends Application<WorkerConfiguration> {
 
@@ -28,10 +30,8 @@ public class HelloWorker extends Application<WorkerConfiguration> {
 
     @Override
     public void initialize(Bootstrap<WorkerConfiguration> bootstrap) {
-        bootstrap.addCommand(new PillWorkerCommand("pill", "all things about pill"));
-        bootstrap.addCommand(new PillWorkerCommand("pill_save_ddb", "save pill data to DynamoDB", true));
-        bootstrap.addCommand(new SenseSaveWorkerCommand("sense_save", "saving sense sensor data"));
-        bootstrap.addCommand(new SenseSaveWorkerCommand("sense_save_ddb", "saving sense sensor data to DynamoDB", true, false));
+        bootstrap.addCommand(new PillWorkerCommand("pill_save_ddb", "save pill data to DynamoDB"));
+        bootstrap.addCommand(new SenseSaveWorkerCommand("sense_save_ddb", "saving sense sensor data to DynamoDB", false));
         bootstrap.addCommand(new SenseLastSeenWorkerCommand("sense_last_seen", "saving sense last seen data"));
         bootstrap.addCommand(new AlarmWorkerCommand("smart_alarm", "Start smart alarm worker"));
         bootstrap.addCommand(new LogIndexerWorkerCommand("index_logs", "Indexes logs from Kinesis stream into searchify index"));

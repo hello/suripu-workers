@@ -8,46 +8,6 @@ graphite:
     - io.dropwizard
     - com.hello
 
-sensors_db:
-  # the name of your JDBC driver
-  driverClass: org.postgresql.Driver
-
-  # the username
-  user: ingress_user
-
-  # the password
-  password: hello ingress user
-
-  # the JDBC URL
-  url: jdbc:postgresql://localhost:5432/hello_2014_09_22
-
-  # any properties specific to your JDBC driver:
-  properties:
-    charSet: UTF-8
-
-  # the maximum amount of time to wait on an empty pool before throwing an exception
-  maxWaitForConnection: 1s
-
-  # the SQL query to run when validating a connection's liveness
-  validationQuery: "/* MyService Health Check */ SELECT 1"
-
-  initialSize: 2
-
-  # the minimum number of connections to keep open
-  minSize: 2
-
-  # the maximum number of connections to keep open
-  maxSize: 8
-
-  # whether or not idle connections should be validated
-  checkConnectionWhileIdle: false
-
-  # the amount of time to sleep between runs of the idle connection validation, abandoned cleaner and idle pool resizing
-  evictionInterval: 10s
-
-  # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
-  minIdleTime: 1 minute
-
 common_db:
   # the name of your JDBC driver
   driverClass: org.postgresql.Driver

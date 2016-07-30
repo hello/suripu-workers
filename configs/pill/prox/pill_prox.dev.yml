@@ -1,0 +1,71 @@
+metrics_enabled: false
+debug: true
+graphite:
+  host: carbon.hostedgraphite.com
+  api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
+  reporting_interval_in_seconds: 15
+  include_metrics:
+    - com.hello
+
+common_db:
+  # the name of your JDBC driver
+  driverClass: org.postgresql.Driver
+
+  # the username
+  user: ingress_user
+
+  # the password
+  password: hello ingress user
+
+  # the JDBC URL
+  url: jdbc:postgresql://localhost:5432/dump_2015_02_09
+
+  # any properties specific to your JDBC driver:
+  properties:
+    charSet: UTF-8
+
+  # the maximum amount of time to wait on an empty pool before throwing an exception
+  maxWaitForConnection: 1s
+
+  # the SQL query to run when validating a connection's liveness
+  validationQuery: "/* MyService Health Check */ SELECT 1"
+
+  # the minimum number of connections to keep open
+  minSize: 8
+
+  # the maximum number of connections to keep open
+  maxSize: 32
+
+  # whether or not idle connections should be validated
+  checkConnectionWhileIdle: false
+
+kinesis:
+  endpoint : https://kinesis.us-east-1.amazonaws.com
+  streams :
+    batch_pill_data : dev_batch_pill_data
+
+app_name: PillProxConsumerLocal
+
+max_records: 1000
+
+# Logging settings.
+logging:
+  level: INFO
+  loggers:
+    com.hello.suripu.workers: DEBUG
+    com.hello.suripu.core: DEBUG
+  appenders:
+    - type: console
+      # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
+      timeZone: UTC
+
+dynamodb:
+  region: us-east-1
+  tables:
+    features: features
+    pill_key_store : pill_key_store
+  endpoints:
+    features : https://dynamodb.us-east-1.amazonaws.com
+    pill_key_store : https://dynamodb.us-east-1.amazonaws.com
+
+prox_table_prefix: prefix

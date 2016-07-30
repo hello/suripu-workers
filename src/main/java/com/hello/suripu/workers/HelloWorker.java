@@ -8,6 +8,7 @@ import com.hello.suripu.workers.logs.LogIndexerWorkerCommand;
 import com.hello.suripu.workers.logs.timeline.TimelineLogCommand;
 import com.hello.suripu.workers.notifications.PushNotificationsWorkerCommand;
 import com.hello.suripu.workers.pill.PillWorkerCommand;
+import com.hello.suripu.workers.pill.prox.PillProxWorkerCommand;
 import com.hello.suripu.workers.sense.SenseSaveWorkerCommand;
 import com.hello.suripu.workers.sense.lastSeen.SenseLastSeenWorkerCommand;
 import io.dropwizard.Application;
@@ -39,6 +40,7 @@ public class HelloWorker extends Application<WorkerConfiguration> {
         bootstrap.addCommand(new PushNotificationsWorkerCommand("push", "send push notifications"));
         bootstrap.addCommand(new TimelineLogCommand("timeline_log", "timeline log"));
         bootstrap.addCommand(new SenseStreamFanoutCommand("sense_stream_fanout", "fanout sense stream"));
+        bootstrap.addCommand(new PillProxWorkerCommand("prox", "pill prox"));
     }
 
     @Override

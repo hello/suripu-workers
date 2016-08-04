@@ -1,4 +1,4 @@
-aggstats_generator.dev.ymlmetrics_enabled: false
+metrics_enabled: false
 debug: true
 graphite:
   host: carbon.hostedgraphite.com

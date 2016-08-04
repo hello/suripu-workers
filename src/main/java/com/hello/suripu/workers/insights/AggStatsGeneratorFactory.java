@@ -7,10 +7,8 @@ import com.hello.suripu.core.db.CalibrationDAO;
 import com.hello.suripu.core.db.DeviceDataDAODynamoDB;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.db.PillDataDAODynamoDB;
-import com.hello.suripu.core.db.SleepStatsDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.colors.SenseColorDAO;
-import com.hello.suripu.core.models.Calibration;
 import com.hello.suripu.core.processors.AggStatsProcessor;
 
 /**

@@ -1,5 +1,7 @@
 package com.hello.suripu.workers.insights;
 
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
@@ -20,8 +22,9 @@ import java.util.List;
  * Created by jyfan on 7/1/16.
  */
 public class AggStatsGenerator implements IRecordProcessor {
-    private final static Logger LOGGER = LoggerFactory.getLogger(AggStatsGenerator.class);
 
+    private final static Logger LOGGER = LoggerFactory.getLogger(AggStatsGenerator.class);
+    private final static Float MAX_ALLOWED_ERROR_PERCENT = 0.2f;
 
     private final AggStatsProcessor aggStatsProcessor;
     private final DeviceReadDAO deviceReadDAO;
@@ -37,14 +40,43 @@ public class AggStatsGenerator implements IRecordProcessor {
 //    @Override
     public void initialize(String s) {}
 
-
     @Timed
     @Override
     public void processRecords(List<Record> records, IRecordProcessorCheckpointer iRecordProcessorCheckpointer) {
 
         LOGGER.debug("record_size={}", records.size());
-        for (final Record record : records) {
+        if (records.isEmpty()) {
+            LOGGER.warn("warn=empty-record-list");
+            return;
+        }
 
+        final Optional<Record> lastProcessedRecord = processKinesisRecords(records);
+
+        if (!lastProcessedRecord.isPresent()) {
+            LOGGER.error("action=system-exit reason=too-many-errors");
+            System.exit(1);
+        }
+
+        try {
+            iRecordProcessorCheckpointer.checkpoint();
+        } catch (InvalidStateException | ShutdownException e) {
+            LOGGER.error("action=system-exit reason=checkpoint-fail exception={}", e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+    }
+
+    private Optional<Record> processKinesisRecords(List<Record> records) {
+
+        //Assumes non-empty records list
+        final Integer numRecords = records.size();
+        final Integer maxAllowedErrors = (int) Math.ceil(numRecords * MAX_ALLOWED_ERROR_PERCENT);
+
+        Record lastProcessedRecord = records.get(0);
+        Integer errorCount = 0;
+
+        for (final Record record : records) {
             try {
                 final SenseCommandProtos.batched_pill_data data = SenseCommandProtos.batched_pill_data.parseFrom(record.getData().array());
 
@@ -65,18 +97,40 @@ public class AggStatsGenerator implements IRecordProcessor {
                     this.aggStatsProcessor.generateCurrentAggStats(deviceAccountPairOptional.get());
                 }
 
-            } catch (InvalidProtocolBufferException e) {
+                lastProcessedRecord = record;
+
+            } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
+                errorCount += 1;
                 LOGGER.error("action=received-malformed-protobuf exception={} record={}", e.getMessage(), record.toString());
-            } catch (IllegalArgumentException e) {
-                LOGGER.error("action=fail-decrypt-pill-data data={} error={}", record.getData().array(), e.getMessage());
             }
+
         }
 
-        //TODO: Checkpoint
+        LOGGER.info("action=finished-records-list error_count={}", errorCount);
+        if (errorCount > maxAllowedErrors) {
+            LOGGER.error("action=too-many-errors error_count={} last_record={}", errorCount, lastProcessedRecord.toString());
+            return Optional.absent();
+        }
+
+        return Optional.of(lastProcessedRecord);
     }
 
     @Override
     public void shutdown(IRecordProcessorCheckpointer iRecordProcessorCheckpointer, ShutdownReason shutdownReason) {
-        LOGGER.warn("action=shutdown-aggStats-processor reason={}", shutdownReason.toString());
+        LOGGER.warn("action=SHUTDOWN-aggStats-processor reason={}", shutdownReason.toString());
+
+        if (shutdownReason == ShutdownReason.TERMINATE) {
+            LOGGER.warn("action=going-to-checkpoint shutdown_reason={}", shutdownReason.toString());
+            try {
+                iRecordProcessorCheckpointer.checkpoint();
+                LOGGER.warn("action=checkpoint-success");
+            } catch (InvalidStateException | ShutdownException e) {
+                LOGGER.error("action=checkpoint-fail error={}", e.getMessage());
+            }
+        }  else {
+            LOGGER.error("action=system-exit reason=encountered-zombie shutdown_reason={}", shutdownReason.toString());
+            System.exit(1);
+        }
+
     }
 }

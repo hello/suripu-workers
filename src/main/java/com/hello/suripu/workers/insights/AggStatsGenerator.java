@@ -60,9 +60,7 @@ public class AggStatsGenerator implements IRecordProcessor {
         try {
             iRecordProcessorCheckpointer.checkpoint();
         } catch (InvalidStateException | ShutdownException e) {
-            LOGGER.error("action=system-exit reason=checkpoint-fail exception={}", e.getMessage());
-            e.printStackTrace();
-            System.exit(1);
+            LOGGER.error("error=checkpoint-fail exception={}", e.getMessage());
         }
 
     }

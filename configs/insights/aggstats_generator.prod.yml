@@ -49,7 +49,7 @@ kinesis:
   streams :
     batch_pill_data : batch_pill_data
 
-app_name: AggStatsGeneratorConsumerDev
+app_name: AggStatsGeneratorConsumer
 
 max_records: 100
 

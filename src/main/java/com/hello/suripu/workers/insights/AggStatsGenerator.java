@@ -80,7 +80,6 @@ public class AggStatsGenerator implements IRecordProcessor {
 
                 for (final SenseCommandProtos.pill_data pill : data.getPillsList()) {
                     if (!pill.hasBatteryLevel()) {
-                        LOGGER.debug("action=no-agg-stats reason=no-battery-level deviceId={}", pill.getDeviceId().toString());
                         continue;
                     }
 

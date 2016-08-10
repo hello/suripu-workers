@@ -61,9 +61,19 @@ logging:
     com.hello.suripu.core: DEBUG
     com.hello.suripu.core.processors.AggStatsProcessor: DEBUG
   appenders:
-    - type: console
-    # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
-      timeZone: UTC
+    - type: file
+          threshold: DEBUG
+          currentLogFilename: /var/log/suripu-workers/suripu-workers-aggstats.log
+          # When the log file rotates, the archived log will be renamed to this and gzipped. The
+          # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
+          # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
+          archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-aggstats-%d{yyyy-MM-dd}.log.gz
+          # The number of archived files to keep.
+          archivedFileCount: 7
+        - type: papertrail
+          host: logs2.papertrailapp.com
+          port: 11366
+          ident: suripu-workers-aggstats-dev
 
 dynamo_db:
   region: us-east-1

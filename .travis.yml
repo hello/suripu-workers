@@ -18,6 +18,7 @@ script:
 - mkdir deb-pkg
 - cp configs/alarm/alarm_worker.prod.yml $TEMP_DIR/etc/hello/alarm_worker.yml
 - cp configs/insights/insights_generator.prod.yml $TEMP_DIR/etc/hello/insights_generator.yml
+- cp configs/insights/aggstats_generator.prod.yml $TEMP_DIR/etc/hello/aggstats_generator.yml
 - cp configs/logs/index_logs_worker.prod.yml $TEMP_DIR/etc/hello/index_logs_worker.yml
 - cp configs/logs/timeline_logs.prod.yml $TEMP_DIR/etc/hello/timeline_logs.yml
 - cp configs/pill/pill_save_ddb.prod.yml $TEMP_DIR/etc/hello/pill_save_ddb.yml

@@ -1,10 +1,5 @@
 package com.hello.suripu.workers.sense.lastSeen;
 
-import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
-import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
-import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
-import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
@@ -14,6 +9,11 @@ import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import com.google.protobuf.InvalidProtocolBufferException;
 
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
+import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
+import com.amazonaws.services.kinesis.model.Record;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.annotation.Timed;
@@ -22,9 +22,8 @@ import com.hello.suripu.core.db.SensorsViewsDynamoDB;
 import com.hello.suripu.core.db.WifiInfoDAO;
 import com.hello.suripu.core.models.DeviceData;
 import com.hello.suripu.core.models.WifiInfo;
-import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 import com.hello.suripu.core.util.SenseProcessorUtils;
-import com.hello.suripu.workers.sense.SenseSaveDDBProcessor;
+import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -122,6 +121,7 @@ public class SenseLastSeenProcessor extends HelloBaseRecordProcessor {
             seenSenses.add(senseExternalId);
 
             if (!lastSeenSenseDataOptional.isPresent()){
+                LOGGER.error("error=missing-batch-data device_id={} sequence_number={}", senseExternalId, record.getSequenceNumber());
                 continue;
             }
 
@@ -207,6 +207,11 @@ public class SenseLastSeenProcessor extends HelloBaseRecordProcessor {
 
     private Optional<DeviceData> getSenseData(final DataInputProtos.BatchPeriodicDataWorker batchPeriodicDataWorker) {
         final String senseExternalId = batchPeriodicDataWorker.getData().getDeviceId();
+        if (batchPeriodicDataWorker.getData().getDataList().isEmpty()) {
+            LOGGER.error("error=empty-batch-data device_id={}", senseExternalId);
+            return Optional.absent();
+        }
+
         final DataInputProtos.periodic_data periodicData = batchPeriodicDataWorker.getData().getDataList().get(batchPeriodicDataWorker.getData().getDataList().size() - 1);
 
         final long createdAtTimestamp = batchPeriodicDataWorker.getReceivedAt();

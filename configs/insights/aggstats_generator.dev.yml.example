@@ -72,6 +72,7 @@ dynamo_db:
       agg_stats: agg_stats
       calibration: calibration
       device_data: sense_data
+      features: features
       pill_data: pill_data
       sleep_stats: sleep_stats
 
@@ -79,6 +80,7 @@ dynamo_db:
       agg_stats: http://localhost:7777
       calibration: http://localhost:7777
       device_data: http://localhost:7777
+      features: http://localhost:7777
       pill_data: http://localhost:7777
       sleep_stats: http://localhost:7777
 

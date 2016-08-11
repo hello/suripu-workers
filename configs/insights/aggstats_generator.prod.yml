@@ -83,6 +83,7 @@ dynamo_db:
       agg_stats: prod_agg_stats
       calibration: prod_calibration
       device_data: prod_sense_data
+      features: features
       pill_data: prod_pill_data
       sleep_stats: prod_sleep_stats
 
@@ -90,6 +91,7 @@ dynamo_db:
       agg_stats: http://dynamodb.us-east-1.amazonaws.com
       calibration: http://dynamodb.us-east-1.amazonaws.com
       device_data: http://dynamodb.us-east-1.amazonaws.com
+      features: http://dynamodb.us-east-1.amazonaws.com
       pill_data: http://dynamodb.us-east-1.amazonaws.com
       sleep_stats: http://dynamodb.us-east-1.amazonaws.com
 

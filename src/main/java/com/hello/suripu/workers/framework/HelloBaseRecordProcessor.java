@@ -3,6 +3,7 @@ package com.hello.suripu.workers.framework;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.flipper.FeatureFlipper;
+import com.hello.suripu.workers.WorkerFeatureFlipper;
 import com.librato.rollout.RolloutClient;
 
 import javax.inject.Inject;
@@ -67,5 +68,9 @@ public abstract class HelloBaseRecordProcessor implements IRecordProcessor {
 
     protected Boolean hasPersistSignificantWifiRssiChangeEnabled(final String senseId) {
         return flipper.deviceFeatureActive(FeatureFlipper.PERSIST_SIGNIFICANT_WIFI_RSSI_CHANGE, senseId, Collections.EMPTY_LIST);
+    }
+
+    protected Boolean hasAggStatsWorkerEnabled(final Long accountId) {
+        return flipper.userFeatureActive(WorkerFeatureFlipper.AGG_STATS_WORKER_ENABLED, accountId, Collections.EMPTY_LIST);
     }
 }

@@ -13,6 +13,7 @@ import com.hello.suripu.api.ble.SenseCommandProtos;
 import com.hello.suripu.core.db.DeviceReadDAO;
 import com.hello.suripu.core.models.DeviceAccountPair;
 import com.hello.suripu.core.processors.AggStatsProcessor;
+import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +22,7 @@ import java.util.List;
 /**
  * Created by jyfan on 7/1/16.
  */
-public class AggStatsGenerator implements IRecordProcessor {
+public class AggStatsGenerator extends HelloBaseRecordProcessor {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(AggStatsGenerator.class);
     private final static Float MAX_ALLOWED_ERROR_PERCENT = 0.2f;
@@ -79,6 +80,7 @@ public class AggStatsGenerator implements IRecordProcessor {
                 final SenseCommandProtos.batched_pill_data data = SenseCommandProtos.batched_pill_data.parseFrom(record.getData().array());
 
                 for (final SenseCommandProtos.pill_data pill : data.getPillsList()) {
+                    LOGGER.info(pill.toString());
                     if (!pill.hasBatteryLevel()) {
                         continue;
                     }
@@ -86,6 +88,11 @@ public class AggStatsGenerator implements IRecordProcessor {
                     final Optional<DeviceAccountPair> deviceAccountPairOptional = this.deviceReadDAO.getInternalPillId(pill.getDeviceId());
                     if (!deviceAccountPairOptional.isPresent()) {
                         LOGGER.error("action=no-agg-stats reason=no-device-account-pair deviceId={}", pill.getDeviceId().toString());
+                        continue;
+                    }
+
+                    if (!hasAggStatsWorkerEnabled(deviceAccountPairOptional.get().accountId)) {
+                        LOGGER.debug("action=no-agg-stats reason=ff-off account_id={}", deviceAccountPairOptional.get().accountId);
                         continue;
                     }
 

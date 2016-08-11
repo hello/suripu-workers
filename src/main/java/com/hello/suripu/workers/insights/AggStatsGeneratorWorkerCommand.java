@@ -13,6 +13,7 @@ import com.codahale.metrics.graphite.GraphiteReporter;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
 import com.hello.suripu.core.db.AggStatsDAODynamoDB;
@@ -20,6 +21,7 @@ import com.hello.suripu.core.db.CalibrationDAO;
 import com.hello.suripu.core.db.CalibrationDynamoDB;
 import com.hello.suripu.core.db.DeviceDataDAODynamoDB;
 import com.hello.suripu.core.db.DeviceReadDAO;
+import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.PillDataDAODynamoDB;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.colors.SenseColorDAO;
@@ -29,6 +31,7 @@ import com.hello.suripu.core.models.SleepStats;
 import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.coredw8.metrics.RegexMetricFilter;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
+import com.hello.suripu.workers.framework.WorkerRolloutModule;
 import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.jdbi.ImmutableListContainerFactory;
 import io.dropwizard.jdbi.ImmutableSetContainerFactory;
@@ -124,6 +127,10 @@ public class AggStatsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Agg
         final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
         final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, configuration.dynamoDBConfiguration());
 
+        final AmazonDynamoDB featureDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.FEATURES);
+        final String featureNamespace = (configuration.isDebug()) ? "dev" : "prod";
+        final FeatureStore featureStore = new FeatureStore(featureDynamoDB, tableNames.get(DynamoDBTableName.FEATURES), featureNamespace);
+
         final AmazonDynamoDB dynamoDBStatsClient = amazonDynamoDBClientFactory.getInstrumented(DynamoDBTableName.SLEEP_STATS, SleepStats.class);
         final SleepStatsDAODynamoDB sleepStatsDAODynamoDB = new SleepStatsDAODynamoDB(dynamoDBStatsClient,
                 tableNames.get(DynamoDBTableName.SLEEP_STATS),
@@ -142,6 +149,10 @@ public class AggStatsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Agg
         final AggStatsDAODynamoDB aggStatsDAODynamoDB = new AggStatsDAODynamoDB(aggStatsDAODynamoDBClient,
                 tableNames.get(DynamoDBTableName.AGG_STATS),
                 configuration.getAggStatsVersion());
+
+        //Injection for feature flip processor
+        final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
+        ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
         final IRecordProcessorFactory processorFactory = new AggStatsGeneratorFactory(sleepStatsDAODynamoDB, pillDataDAODynamoDB, deviceReadDAO, deviceDataDAODynamoDB, senseColorDAO, calibrationDAO, aggStatsDAODynamoDB);
         final Worker worker = new Worker(processorFactory, kinesisConfig);

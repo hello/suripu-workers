@@ -117,6 +117,7 @@ dynamo_db:
       features : features
       calibration : calibration
       insights : insights
+      insights_last_seen : insights_last_seen
       sleep_stats : sleep_stats
       preferences : preferences
       sleep_score : sleep_score
@@ -127,6 +128,7 @@ dynamo_db:
       features : http://dynamodb.us-east-1.amazonaws.com
       calibration: http://dynamodb.us-east-1.amazonaws.com
       insights: http://dynamodb.us-east-1.amazonaws.com
+      insights_last_seen: http://dynamodb.us-east-1.amazonaws.com
       sleep_stats : http://dynamodb.us-east-1.amazonaws.com
       preferences : http://dynamodb.us-east-1.amazonaws.com
       sleep_score : http://dynamodb.us-east-1.amazonaws.com

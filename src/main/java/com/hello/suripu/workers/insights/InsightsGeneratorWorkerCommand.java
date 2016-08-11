@@ -30,6 +30,8 @@ import com.hello.suripu.core.db.QuestionResponseReadDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.TrendsInsightsDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
+import com.hello.suripu.core.insights.InsightsLastSeenDAO;
+import com.hello.suripu.core.insights.InsightsLastSeenDynamoDB;
 import com.hello.suripu.core.preferences.AccountPreferencesDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.processors.insights.LightData;
@@ -149,6 +151,10 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
         final InsightsDAODynamoDB insightsDAODynamoDB = new InsightsDAODynamoDB(insightsDynamoDB,
                 tableNames.get(DynamoDBTableName.INSIGHTS));
 
+        final AmazonDynamoDB insightsLastSeenDynamoDBClient= amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.INSIGHTS_LAST_SEEN);
+        final InsightsLastSeenDAO insightsLastSeenDAO= InsightsLastSeenDynamoDB.create(insightsLastSeenDynamoDBClient,
+                tableNames.get(DynamoDBTableName.INSIGHTS_LAST_SEEN));
+
         final AmazonDynamoDB accountPreferencesDynamoDBClient = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.PREFERENCES);
         final AccountPreferencesDAO accountPreferencesDynamoDB = AccountPreferencesDynamoDB.create(accountPreferencesDynamoDBClient,
                 tableNames.get(DynamoDBTableName.PREFERENCES));
@@ -191,6 +197,7 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
                 deviceDAO,
                 aggregateSleepScoreDAODynamoDB,
                 insightsDAODynamoDB,
+                insightsLastSeenDAO,
                 trendsInsightsDAO,
                 questionResponseDAO,
                 sleepStatsDAODynamoDB,

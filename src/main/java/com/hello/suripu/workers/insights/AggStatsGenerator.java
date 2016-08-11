@@ -92,12 +92,12 @@ public class AggStatsGenerator extends HelloBaseRecordProcessor {
                     }
 
                     if (!hasAggStatsWorkerEnabled(deviceAccountPairOptional.get().accountId)) {
-                        LOGGER.debug("action=no-agg-stats reason=ff-off account_id={}", deviceAccountPairOptional.get().accountId);
+                        LOGGER.debug("action=no-agg-stats reason=ff-off account_id={}", deviceAccountPairOptional.get().accountId.toString());
                         continue;
                     }
 
                     //Compute and save agg stats
-                    LOGGER.debug("action=get-agg-stats account_id={}", deviceAccountPairOptional.get().accountId);
+                    LOGGER.debug("action=get-agg-stats account_id={}", deviceAccountPairOptional.get().accountId.toString());
                     this.aggStatsProcessor.generateCurrentAggStats(deviceAccountPairOptional.get());
                 }
 
@@ -105,14 +105,14 @@ public class AggStatsGenerator extends HelloBaseRecordProcessor {
 
             } catch (InvalidProtocolBufferException | IllegalArgumentException e) {
                 errorCount += 1;
-                LOGGER.error("action=received-malformed-protobuf exception={} record={}", e.getMessage(), record.toString());
+                LOGGER.error("action=received-malformed-protobuf exception={} record-seq={}", e.getMessage(), record.getSequenceNumber());
             }
 
         }
 
         LOGGER.info("action=finished-records-list error_count={}", errorCount);
         if (errorCount > maxAllowedErrors) {
-            LOGGER.error("action=too-many-errors error_count={} last_record={}", errorCount, lastProcessedRecord.toString());
+            LOGGER.error("action=too-many-errors error_count={} last_record-seq={}", errorCount, lastProcessedRecord.getSequenceNumber());
             return Optional.absent();
         }
 

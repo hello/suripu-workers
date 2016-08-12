@@ -80,19 +80,18 @@ public class AggStatsGenerator extends HelloBaseRecordProcessor {
                 final SenseCommandProtos.batched_pill_data data = SenseCommandProtos.batched_pill_data.parseFrom(record.getData().array());
 
                 for (final SenseCommandProtos.pill_data pill : data.getPillsList()) {
-                    LOGGER.info(pill.toString());
                     if (!pill.hasBatteryLevel()) {
                         continue;
                     }
 
                     final Optional<DeviceAccountPair> deviceAccountPairOptional = this.deviceReadDAO.getInternalPillId(pill.getDeviceId());
                     if (!deviceAccountPairOptional.isPresent()) {
-                        LOGGER.error("action=no-agg-stats reason=no-device-account-pair deviceId={}", pill.getDeviceId().toString());
+                        LOGGER.debug("action=no-agg-stats reason=no-device-account-pair deviceId={}", pill.getDeviceId().toString());
                         continue;
                     }
 
                     if (!hasAggStatsWorkerEnabled(deviceAccountPairOptional.get().accountId)) {
-                        LOGGER.debug("action=no-agg-stats reason=ff-off account_id={}", deviceAccountPairOptional.get().accountId.toString());
+                        LOGGER.trace("action=no-agg-stats reason=ff-off account_id={}", deviceAccountPairOptional.get().accountId.toString());
                         continue;
                     }
 
@@ -110,7 +109,7 @@ public class AggStatsGenerator extends HelloBaseRecordProcessor {
 
         }
 
-        LOGGER.info("action=finished-records-list error_count={}", errorCount);
+        LOGGER.info("action=finished-records-list error_count={} records_processed={}", errorCount, numRecords);
         if (errorCount > maxAllowedErrors) {
             LOGGER.error("action=too-many-errors error_count={} last_record-seq={}", errorCount, lastProcessedRecord.getSequenceNumber());
             return Optional.absent();

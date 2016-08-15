@@ -2,7 +2,6 @@ package com.hello.suripu.workers.insights;
 
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
@@ -84,20 +83,28 @@ public class AggStatsGenerator extends HelloBaseRecordProcessor {
                         continue;
                     }
 
-                    final Optional<DeviceAccountPair> deviceAccountPairOptional = this.deviceReadDAO.getInternalPillId(pill.getDeviceId());
-                    if (!deviceAccountPairOptional.isPresent()) {
-                        LOGGER.debug("action=no-agg-stats reason=no-device-account-pair deviceId={}", pill.getDeviceId().toString());
+                    final Optional<DeviceAccountPair> pillDeviceAccountPairOptional = this.deviceReadDAO.getInternalPillId(pill.getDeviceId());
+                    if (!pillDeviceAccountPairOptional.isPresent()) {
+                        LOGGER.debug("action=no-agg-stats reason=no-pill-device-account-pair pill-deviceId={}", pill.getDeviceId().toString());
                         continue;
                     }
 
-                    if (!hasAggStatsWorkerEnabled(deviceAccountPairOptional.get().accountId)) {
-                        LOGGER.trace("action=no-agg-stats reason=ff-off account_id={}", deviceAccountPairOptional.get().accountId.toString());
+                    final Long accountId = pillDeviceAccountPairOptional.get().accountId;
+
+                    final Optional<DeviceAccountPair> senseDeviceAccountPairOptional = this.deviceReadDAO.getMostRecentSensePairByAccountId(accountId);
+                    if (!senseDeviceAccountPairOptional.isPresent()) {
+                        LOGGER.debug("action=no-agg-stats reason=no-sense-device-account-pair accountId={}", accountId.toString());
+                        continue;
+                    }
+
+                    if (!hasAggStatsWorkerEnabled(accountId)) {
+                        LOGGER.trace("action=no-agg-stats reason=ff-off account_id={}", accountId.toString());
                         continue;
                     }
 
                     //Compute and save agg stats
-                    LOGGER.debug("action=get-agg-stats account_id={}", deviceAccountPairOptional.get().accountId.toString());
-                    this.aggStatsProcessor.generateCurrentAggStats(deviceAccountPairOptional.get());
+                    LOGGER.debug("action=get-agg-stats account_id={}", accountId.toString());
+                    this.aggStatsProcessor.generateCurrentAggStats(senseDeviceAccountPairOptional.get());
                 }
 
                 lastProcessedRecord = record;

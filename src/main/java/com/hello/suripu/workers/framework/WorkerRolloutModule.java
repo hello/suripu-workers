@@ -6,6 +6,7 @@ import com.hello.suripu.core.processors.InsightProcessor;
 import com.hello.suripu.core.processors.TimelineProcessor;
 import com.hello.suripu.workers.alarm.AlarmRecordProcessor;
 import com.hello.suripu.workers.fanout.SenseStreamFanout;
+import com.hello.suripu.workers.insights.AggStatsGenerator;
 import com.hello.suripu.workers.insights.InsightsGenerator;
 import com.hello.suripu.workers.logs.SenseStructuredLogIndexer;
 import com.hello.suripu.workers.logs.timeline.TimelineLogProcessor;
@@ -26,6 +27,7 @@ import javax.inject.Singleton;
  * Created by pangwu on 12/4/14.
  */
 @Module(injects = {
+        AggStatsGenerator.class,
         AlarmRecordProcessor.class,
         S3RecordProcessor.class,
         SavePillDataProcessor.class,

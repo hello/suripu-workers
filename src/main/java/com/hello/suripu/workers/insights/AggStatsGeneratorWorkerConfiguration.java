@@ -10,9 +10,17 @@ import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
 
 /**
- * Created by kingshy on 1/6/15
+ * Created by jyfan on 7/5/16.
  */
-public class InsightsGeneratorWorkerConfiguration extends WorkerConfiguration {
+public class AggStatsGeneratorWorkerConfiguration extends WorkerConfiguration {
+
+    @Valid
+    @NotNull
+    @JsonProperty("agg_stats_version")
+    private String aggStatsVersion;
+    public String getAggStatsVersion() {
+        return this.aggStatsVersion;
+    }
 
     @Valid
     @NotNull
@@ -20,23 +28,6 @@ public class InsightsGeneratorWorkerConfiguration extends WorkerConfiguration {
     private DataSourceFactory commonDB = new DataSourceFactory();
     public DataSourceFactory getCommonDB() {
         return commonDB;
-    }
-
-    @Valid
-    @NotNull
-    @JsonProperty("insights_db")
-    private DataSourceFactory insightsDB = new DataSourceFactory();
-    public DataSourceFactory getInsightsDB() {
-        return insightsDB;
-    }
-
-    @Valid
-    @NotNull
-    @Max(1000)
-    @JsonProperty("max_records")
-    private Integer maxRecords;
-    public Integer getMaxRecords() {
-        return maxRecords;
     }
 
     @Valid
@@ -49,9 +40,12 @@ public class InsightsGeneratorWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
-    @JsonProperty("sleep_score_version")
-    private String sleepScoreVersion;
-    public String getSleepScoreVersion() { return sleepScoreVersion; }
+    @Max(1000)
+    @JsonProperty("max_records")
+    private Integer maxRecords;
+    public Integer getMaxRecords() {
+        return maxRecords;
+    }
 
     @Valid
     @NotNull

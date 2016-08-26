@@ -3,7 +3,7 @@ package com.hello.suripu.workers.framework;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.flipper.DynamoDBAdapter;
 import com.hello.suripu.core.processors.InsightProcessor;
-import com.hello.suripu.core.processors.TimelineProcessor;
+import com.hello.suripu.coredw8.timeline.InstrumentedTimelineProcessor;
 import com.hello.suripu.workers.alarm.AlarmRecordProcessor;
 import com.hello.suripu.workers.fanout.SenseStreamFanout;
 import com.hello.suripu.workers.insights.AggStatsGenerator;
@@ -36,7 +36,7 @@ import javax.inject.Singleton;
         InsightsGenerator.class,
         InsightProcessor.class,
         PushNotificationsProcessor.class,
-        TimelineProcessor.class,
+        InstrumentedTimelineProcessor.class,
         TimelineLogProcessor.class,
         SenseLastSeenProcessor.class,
         SenseStreamFanout.class,

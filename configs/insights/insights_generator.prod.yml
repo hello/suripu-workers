@@ -92,6 +92,7 @@ logging:
   level: INFO
   loggers:
     com.hello.suripu.workers: INFO
+    com.hello.suripu.core.processors.insights.SleepDeprivation: DEBUG
   appenders:
     - type: file
       threshold: DEBUG

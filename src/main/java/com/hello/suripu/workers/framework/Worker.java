@@ -4,7 +4,7 @@ package com.hello.suripu.workers.framework;
 import io.dropwizard.Application;
 import io.dropwizard.Configuration;
 import io.dropwizard.cli.Cli;
-import io.dropwizard.logging.LoggingFactory;
+import io.dropwizard.logging.BootstrapLogging;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.dropwizard.util.Generics;
@@ -27,7 +27,7 @@ public abstract class Worker<T extends Configuration> {
 
     static {
         // make sure spinning up Hibernate Validator doesn't yell at us
-        LoggingFactory.bootstrap();
+        BootstrapLogging.bootstrap();
     }
 
     /**

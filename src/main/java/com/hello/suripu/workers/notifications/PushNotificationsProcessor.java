@@ -10,11 +10,12 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.input.DataInputProtos;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.models.Calibration;
-import com.hello.suripu.core.models.CurrentRoomState;
 import com.hello.suripu.core.models.Sensor;
 import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.preferences.PreferenceName;
+import com.hello.suripu.core.roomstate.Condition;
+import com.hello.suripu.core.roomstate.CurrentRoomState;
 import com.hello.suripu.core.util.DateTimeUtil;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 import org.joda.time.DateTime;
@@ -142,14 +143,14 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
      * @return
      */
     private Optional<HelloPushMessage> getMostImportantSensorState(final CurrentRoomState currentRoomState) {
-        final HashSet<CurrentRoomState.State.Condition> notificationStates = Sets.newHashSet(CurrentRoomState.State.Condition.ALERT, CurrentRoomState.State.Condition.WARNING);
+        final HashSet<Condition> notificationStates = Sets.newHashSet(Condition.ALERT, Condition.WARNING);
 
-        if(notificationStates.contains(currentRoomState.temperature.condition)) {
-            return Optional.of(HelloPushMessage.fromSensors(currentRoomState.temperature.message, Sensor.TEMPERATURE));
+        if(notificationStates.contains(currentRoomState.temperature().condition())) {
+            return Optional.of(HelloPushMessage.fromSensors(currentRoomState.temperature().message, Sensor.TEMPERATURE));
         }
 
-        if(notificationStates.contains(currentRoomState.humidity.condition)) {
-            return Optional.of(HelloPushMessage.fromSensors(currentRoomState.humidity.message, Sensor.HUMIDITY));
+        if(notificationStates.contains(currentRoomState.humidity().condition())) {
+            return Optional.of(HelloPushMessage.fromSensors(currentRoomState.humidity().message, Sensor.HUMIDITY));
         }
 
         return Optional.absent();

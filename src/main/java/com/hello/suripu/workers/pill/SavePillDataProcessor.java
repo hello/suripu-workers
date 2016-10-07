@@ -8,6 +8,7 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.base.Optional;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -23,9 +24,7 @@ import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeat;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.hello.suripu.workers.notifications.PushNotificationKinesisProducer;
-import com.hello.suripu.workers.protobuf.notifications.DeviceStatus;
-import com.hello.suripu.workers.protobuf.notifications.PushNotification;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -48,10 +47,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
     private final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB; // will replace with interface as soon as we have validated this works
     private final Boolean savePillHeartbeat;
-    private final int batteryNotificationThreshold;
-    private final PushNotificationKinesisProducer pushNotificationKinesisProducer;
 
-    private MetricRegistry metrics;
     private final Meter messagesProcessed;
     private final Meter batchSaved;
 
@@ -62,9 +58,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                  final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
                                  final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB,
                                  final Boolean savePillHeartbeat,
-                                 final MetricRegistry metrics,
-                                 final int batteryNotificationThreshold,
-                                 final PushNotificationKinesisProducer pushNotificationKinesisProducer)
+                                 final MetricRegistry metrics)
     {
         this.pillDataIngestDAO = pillDataIngestDAO;
         this.batchSize = batchSize;
@@ -73,9 +67,6 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.pillHeartBeatDAODynamoDB = pillHeartBeatDAODynamoDB;
         this.savePillHeartbeat = savePillHeartbeat;
-        this.batteryNotificationThreshold = batteryNotificationThreshold;
-        this.pushNotificationKinesisProducer = pushNotificationKinesisProducer;
-
 
         this.messagesProcessed = metrics.meter(name(SavePillDataProcessor.class, "messages-processed"));
         this.batchSaved = metrics.meter(name(SavePillDataProcessor.class, "batch-saved"));
@@ -89,116 +80,96 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     public void processRecords(final List<Record> records, final IRecordProcessorCheckpointer iRecordProcessorCheckpointer) {
         LOGGER.debug("Size = {}", records.size());
 
-        // parse kinesis records
         final ArrayList<TrackerMotion> trackerData = new ArrayList<>(records.size());
         final Set<PillHeartBeat> pillHeartBeats = Sets.newHashSet(); // for dynamoDB writes
 
-        final List<SenseCommandProtos.pill_data> pillData = Lists.newArrayList();
-        final Map<String, Optional<byte[]>> pillKeys = Maps.newHashMap();
-        final Map<String, Optional<DeviceAccountPair>> pairs = Maps.newHashMap();
-        final Map<String, Optional<UserInfo>> userInfos = Maps.newHashMap();
-        final Set<String> pillIds = Sets.newHashSet();
-
-        final Map<String, String> pillIdToSenseId = Maps.newHashMap();
-
+        final List<String> pillIds = Lists.newArrayList();
+        final List<SenseCommandProtos.batched_pill_data> batchData = Lists.newArrayList();
+        final ArrayListMultimap<String, String> pillIdToSenseId = ArrayListMultimap.create();
+        final Set<String> senseIds = Sets.newHashSet();
 
         for (final Record record : records) {
             try {
                 final SenseCommandProtos.batched_pill_data batched_pill_data = SenseCommandProtos.batched_pill_data.parseFrom(record.getData().array());
-                for (final SenseCommandProtos.pill_data data : batched_pill_data.getPillsList()) {
+                batchData.add(batched_pill_data);
 
-                    pillData.add(data);
+                for (final SenseCommandProtos.pill_data data : batched_pill_data.getPillsList()) {
                     pillIds.add(data.getDeviceId());
-                    pillIdToSenseId.put(data.getDeviceId(), batched_pill_data.getDeviceId());
+                    senseIds.add(batched_pill_data.getDeviceId());
+
+                    if(printPillDebugInfo(data.getDeviceId())) {
+                        if(data.hasBatteryLevel()) {
+                            LOGGER.info("pill_id={} type=heartbeat", data.getDeviceId());
+                        } else {
+                            final String md5 = DigestUtils.md5Hex(data.getMotionDataEntrypted().toByteArray());
+                            LOGGER.info("pill_id={} sense_id={} md5={}", data.getDeviceId(), data.getDeviceId(), md5);
+                        }
+                    }
                 }
             } catch (InvalidProtocolBufferException e) {
-                LOGGER.error("Failed to decode protobuf: {}", e.getMessage());
+                LOGGER.error("error=invalid-protobuf msg={}", e.getMessage());
             } catch (IllegalArgumentException e) {
-                LOGGER.error("Failed to decrypted pill data {}, error: {}", record.getData().array(), e.getMessage());
+                LOGGER.error("error=parsing-protobuf-failed sequence_number={} partition_key={} msg={}", record.getSequenceNumber(), record.getPartitionKey(), e.getMessage());
             }
         }
 
         try {
             // Fetch data from Dynamo and DB
-            if (!pillIds.isEmpty()) {
-                final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(pillIds);
-                if(keys.isEmpty()) {
-                    LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing. pill_ids={}", pillIds);
-                    System.exit(1);
-                }
-
-                pillKeys.putAll(keys);
-            }
+            final Set<String> uniquePillIds = Sets.newHashSet(pillIds);
+            final Map<String, Optional<byte[]>> pillKeys = getKeys(Lists.newArrayList(uniquePillIds));
 
             // get account_ids associated with the pill external_ids
-            for (final String pillId : pillIds) {
-                final Optional<DeviceAccountPair> optionalPair = deviceDAO.getInternalPillId(pillId);
-                pairs.put(pillId, optionalPair);
-            }
+            final Map<String, Optional<DeviceAccountPair>> pairs = getPillPairing(uniquePillIds);
 
-            // get timezones
-            for (final String pillId : pillIds) {
-                final String senseId = pillIdToSenseId.get(pillId);
-                final Optional<DeviceAccountPair> pair = pairs.get(pillId);
-                if (pair.isPresent()) {
-                    final Optional<UserInfo> userInfoOptional = mergedUserInfoDynamoDB.getInfo(senseId, pair.get().accountId);
-                    userInfos.put(pillId, userInfoOptional);
-                } else {
-                    userInfos.put(pillId, Optional.<UserInfo>absent());
-                }
-            }
+            final InMemorySenseAndPillPairings pairings = getTimeZones(senseIds);
 
-            for (final SenseCommandProtos.pill_data data : pillData) {
-                final Optional<byte[]> decryptionKey = pillKeys.get(data.getDeviceId());
-
-                // The key should not be null
-                if (!decryptionKey.isPresent()) {
-                    LOGGER.error("Missing decryption key for pill: {}", data.getDeviceId());
-                    continue;
-                }
-
-                final Optional<DeviceAccountPair> optionalPair = pairs.get(data.getDeviceId());
-                if (!optionalPair.isPresent()) {
-                    LOGGER.error("Missing pairing in account tracker map for pill: {}", data.getDeviceId());
-                    continue;
-                }
-
-                final String senseId = pillIdToSenseId.get(data.getDeviceId());
-                final DeviceAccountPair pair = optionalPair.get();
-
-                final Optional<UserInfo> userInfoOptional = userInfos.get(data.getDeviceId());
-                if (!userInfoOptional.isPresent()) {
-                    LOGGER.error("Missing UserInfo for account: {} and pill_id = {} and sense_id = {}", pair.accountId, pair.externalDeviceId, senseId);
-                    continue;
-                }
-
-                final UserInfo userInfo = userInfoOptional.get();
-                final Optional<DateTimeZone> timeZoneOptional = userInfo.timeZone;
-                if (!timeZoneOptional.isPresent()) {
-                    LOGGER.error("No timezone for account {} with pill_id = {}", pair.accountId, pair.externalDeviceId);
-                    continue;
-                }
-
-
-                if (data.hasMotionDataEntrypted()) {
-                    try {
-                        final TrackerMotion trackerMotion = TrackerMotion.create(data, pair, timeZoneOptional.get(), decryptionKey.get());
-                        trackerData.add(trackerMotion);
-                        LOGGER.trace("Tracker Data added for batch insert for pill_id = {}", pair.externalDeviceId);
-                    } catch (TrackerMotion.InvalidEncryptedPayloadException exception) {
-                        LOGGER.error("Fail to decrypt tracker motion payload for pill {}, account {}", pair.externalDeviceId, pair.accountId);
-                    }
-                }
-            }
-
-            // only write heartbeat for postgres worker
-            if (this.savePillHeartbeat) {
-                final List<PushNotification.UserPushNotification> pushNotifications = new ArrayList<>();
-
-                // Loop again for HeartBeat
-                for (final SenseCommandProtos.pill_data data : pillData) {
+            for(final SenseCommandProtos.batched_pill_data batch : batchData) {
+                final String senseId = batch.getDeviceId();
+                for (final SenseCommandProtos.pill_data data : batch.getPillsList()) {
                     final String pillId = data.getDeviceId();
-                    if (data.hasBatteryLevel()) {
+                    if(pairings.paired(senseId, pillId)) {
+                        LOGGER.warn("msg=not-paired pill_id={} sense_id={}", pillId, senseId);
+                        continue;
+                    }
+
+                    final Optional<byte[]> decryptionKey = pillKeys.get(pillId);
+
+                    // The key should not be null
+                    if (!decryptionKey.isPresent()) {
+                        LOGGER.error("error=missing-decryption-key pill_id={}", pillId);
+                        continue;
+                    }
+
+                    final Optional<DeviceAccountPair> optionalPair = pairs.get(pillId);
+                    if (!optionalPair.isPresent()) {
+                        LOGGER.error("error=missing-pairing pill_id={}", pillId);
+                        continue;
+                    }
+
+                    final DeviceAccountPair pair = optionalPair.get();
+
+                    final Optional<DateTimeZone> timeZoneOptional = pairings.timezone(pillId);
+                    if (!timeZoneOptional.isPresent()) {
+                        LOGGER.error("error=missing-timezone account_id={} pill_id={}", pair.accountId, pair.externalDeviceId);
+                        continue;
+                    }
+
+                    if (data.hasMotionDataEntrypted()) {
+                        try {
+                            final TrackerMotion trackerMotion = TrackerMotion.create(data, pair, timeZoneOptional.get(), decryptionKey.get());
+
+                            trackerData.add(trackerMotion);
+                            if (printPillDebugInfo(pillId)) {
+                                LOGGER.trace("action=add-motion-data pill_id={}", pillId);
+                            }
+                        } catch (TrackerMotion.InvalidEncryptedPayloadException exception) {
+                            LOGGER.error("error=payload-decrypt-failed pill_id={} account_id={}", pillId, pair.accountId);
+                        }
+                    } else {
+                        // heartbeats
+                        if (!data.hasBatteryLevel()) {
+                            continue;
+                        }
 
                         final int batteryLevel = data.getBatteryLevel();
                         final int upTimeInSeconds = data.getUptime();
@@ -206,37 +177,14 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                         final Long ts = data.getTimestamp() * 1000L;
                         final DateTime lastUpdated = new DateTime(ts, DateTimeZone.UTC);
 
-
-                        // dual writes to dynamo
-                        if (hasPillHeartBeatDynamoDBEnabled(pillId)) {
-                            final PillHeartBeat pillHeartBeat = PillHeartBeat.create(pillId, batteryLevel, firmwareVersion, upTimeInSeconds, lastUpdated);
-                            LOGGER.trace("Received heartbeat for pill_id {}, last_updated {}", pillId, lastUpdated);
-                            pillHeartBeats.add(pillHeartBeat);
+                        final PillHeartBeat pillHeartBeat = PillHeartBeat.create(pillId, batteryLevel, firmwareVersion, upTimeInSeconds, lastUpdated);
+                        if(printPillDebugInfo(pillId)) {
+                            LOGGER.info("action=heartbeat pill_id={} last_updated={}", pillId, lastUpdated);
                         }
-
-                        // If battery level below threshold, send push notification
-                        if (batteryLevel < batteryNotificationThreshold) {
-                            final String senseId = pillIdToSenseId.get(data.getDeviceId());
-                            final Optional<UserInfo> userInfoOptional = userInfos.get(pillId);
-                            if (senseId != null && userInfoOptional.isPresent()) {
-                                final PushNotification.UserPushNotification userPushNotification = PushNotification.UserPushNotification
-                                        .newBuilder()
-                                        .setSenseId(senseId)
-                                        .setAccountId(userInfoOptional.get().accountId)
-                                        .setPillBatteryLow(DeviceStatus.PillBatteryLow.newBuilder()
-                                                .setBatteryPercent(batteryLevel)
-                                                .setPillId(pillId))
-                                        .build();
-                                pushNotifications.add(userPushNotification);
-                            }
-                        }
+                        pillHeartBeats.add(pillHeartBeat);
                     }
                 }
-
-                pushNotificationKinesisProducer.putNotifications(pushNotifications);
-
             }
-
         } catch (Exception e) {
             LOGGER.error("Failed processing pill: {}", e.getMessage());
             LOGGER.error("Failed processing pill: {}", e);
@@ -268,6 +216,46 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
         }
 
         messagesProcessed.mark(records.size());
+    }
+
+
+    Map<String, Optional<byte[]>> getKeys(final List<String> pillIds) {
+        final Map<String, Optional<byte[]>> pillKeys = Maps.newHashMap();
+        if (pillIds.isEmpty()) {
+            return pillKeys;
+        }
+
+        for(final List<String> sublist : Lists.partition(pillIds, 100)) {
+            final Map<String, Optional<byte[]>> keys = pillKeyStore.getBatch(Sets.newHashSet(sublist));
+            if (keys.isEmpty() && !sublist.isEmpty()) {
+                LOGGER.error("Failed to retrieve decryption keys. Can't proceed. Bailing. pill_ids={}", pillIds);
+                System.exit(1);
+            }
+            pillKeys.putAll(keys);
+        }
+
+        return pillKeys;
+    }
+
+    Map<String,Optional<DeviceAccountPair>> getPillPairing(Set<String> uniquePillIds) {
+        final Map<String, Optional<DeviceAccountPair>> pairs = Maps.newHashMapWithExpectedSize(uniquePillIds.size());
+        for (final String pillId : uniquePillIds) {
+            final Optional<DeviceAccountPair> optionalPair = deviceDAO.getInternalPillId(pillId);
+            pairs.put(pillId, optionalPair);
+        }
+        return pairs;
+    }
+
+
+
+    InMemorySenseAndPillPairings getTimeZones(final Set<String> senseIds) {
+
+        final InMemorySenseAndPillPairings senseAndPillPairings = new InMemorySenseAndPillPairings();
+        for(final String senseId : senseIds) {
+            final List<UserInfo> users = mergedUserInfoDynamoDB.getInfo(senseId);
+            senseAndPillPairings.add(senseId, users);
+        }
+        return senseAndPillPairings;
     }
 
     @Override

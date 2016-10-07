@@ -50,6 +50,6 @@ public class SavePillDataProcessorFactory implements IRecordProcessorFactory {
     @Override
     public IRecordProcessor createProcessor() {
         return new SavePillDataProcessor(pillDataIngestDAO, batchSize, pillKeyStore, deviceDAO, mergedUserInfoDynamoDB,
-                pillHeartBeatDAODynamoDB, savePillHeartBeat, metricRegistry, batteryNotificationThreshold, pushNotificationKinesisProducer);
+                pillHeartBeatDAODynamoDB, savePillHeartBeat, metricRegistry);
     }
 }

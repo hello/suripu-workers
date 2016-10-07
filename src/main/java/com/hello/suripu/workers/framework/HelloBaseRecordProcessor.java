@@ -73,4 +73,8 @@ public abstract class HelloBaseRecordProcessor implements IRecordProcessor {
     protected Boolean hasAggStatsWorkerEnabled(final Long accountId) {
         return flipper.userFeatureActive(WorkerFeatureFlipper.AGG_STATS_WORKER_ENABLED, accountId, Collections.EMPTY_LIST);
     }
+
+    protected Boolean printPillDebugInfo(final String pillId) {
+        return flipper.deviceFeatureActive(WorkerFeatureFlipper.PRINT_PILL_INFO, pillId, Collections.EMPTY_LIST);
+    }
 }

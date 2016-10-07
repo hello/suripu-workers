@@ -5,11 +5,15 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Maps;
 import com.hello.suripu.core.models.UserInfo;
 import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
 
 public class InMemorySenseAndPillPairings {
+
+    private final static Logger LOGGER = LoggerFactory.getLogger(InMemorySenseAndPillPairings.class);
 
     final private Map<String, DateTimeZone> pillIds = Maps.newHashMap();
     final private ArrayListMultimap<String, String> senseToPills = ArrayListMultimap.create();
@@ -20,6 +24,8 @@ public class InMemorySenseAndPillPairings {
                 final String pillId = userInfo.pillColor.get().getPillId();
                 pillIds.put(pillId, userInfo.timeZone.get());
                 senseToPills.put(senseId, pillId);
+            } else {
+                LOGGER.warn("error=missing-tzor-pill-id sense_id={} account_id={} ", senseId, userInfo.accountId);
             }
         }
     }

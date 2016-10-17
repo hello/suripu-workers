@@ -64,7 +64,6 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
     final CacheLoader actionCacheLoader = new CacheLoader<DeviceExpansionPair, Boolean>() {
         public Boolean load(final DeviceExpansionPair deviceExpansionPair) {
-            LOGGER.debug("Sense Id '{}' not in cache, executing alarm action", deviceExpansionPair.deviceId);
             return attemptAlarmAction(deviceExpansionPair);
         }
     };
@@ -112,7 +111,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 final AlarmAction.alarm_action pb = AlarmAction.alarm_action.parseFrom(record.getData().array());
 
                 if(!pb.hasDeviceId() || pb.getDeviceId().isEmpty()) {
-                    LOGGER.warn("Found an alarm action without a device_id {}");
+                    LOGGER.warn("warn=action-deviceId-missing");
                     continue;
                 }
                 final String senseId = pb.getDeviceId();
@@ -134,7 +133,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 final Integer bufferTimeSeconds = HomeAutomationExpansionFactory.getBufferTimeByServiceName(expansion.serviceName);
 
                 //Check against expansion default action buffer time
-                if((int)pb.getRingOffsetFromNowInSecond() > bufferTimeSeconds) {
+                if(pb.getRingOffsetFromNowInSecond() > bufferTimeSeconds) {
                     continue;
                 }
 
@@ -151,7 +150,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
             }
         }
 
-        this.actionsExecuted.mark((long)successfulActions);
+        this.actionsExecuted.mark(successfulActions);
 
         try {
             iRecordProcessorCheckpointer.checkpoint();
@@ -238,6 +237,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         }
     }
 
+    //TODO: Don't do this here. Needs to be moved to gaibu-core
     private String getDecryptedExternalToken(final String deviceId, final Expansion expansion, final Boolean isRefreshToken) {
         final Optional<ExternalToken> externalTokenOptional = externalTokenStore.getTokenByDeviceId(deviceId, expansion.id);
         if(!externalTokenOptional.isPresent()) {

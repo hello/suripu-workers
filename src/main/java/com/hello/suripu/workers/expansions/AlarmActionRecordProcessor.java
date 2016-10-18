@@ -12,7 +12,7 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hello.suripu.api.output.AlarmAction;
+import com.hello.suripu.api.expansions.ExpansionProtos;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
 import com.hello.suripu.core.speech.interfaces.Vault;
@@ -108,7 +108,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         for (final Record record : records) {
             try {
-                final AlarmAction.alarm_action pb = AlarmAction.alarm_action.parseFrom(record.getData().array());
+                final ExpansionProtos.AlarmAction pb = ExpansionProtos.AlarmAction.parseFrom(record.getData().array());
 
                 if(!pb.hasDeviceId() || pb.getDeviceId().isEmpty()) {
                     LOGGER.warn("warn=action-deviceId-missing");

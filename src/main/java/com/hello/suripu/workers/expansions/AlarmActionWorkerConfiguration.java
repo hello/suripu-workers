@@ -2,6 +2,7 @@ package com.hello.suripu.workers.expansions;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.coredropwizard.configuration.NewDynamoDBConfiguration;
+import com.hello.suripu.coredropwizard.configuration.RedisConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 
 import javax.validation.Valid;
@@ -67,5 +68,11 @@ public class AlarmActionWorkerConfiguration extends WorkerConfiguration {
     @JsonProperty("keys_management_service")
     private KMSConfiguration kmsConfiguration;
     public KMSConfiguration kmsConfiguration() { return this.kmsConfiguration; }
+
+    @JsonProperty("redis")
+    private RedisConfiguration redisConfiguration;
+    public RedisConfiguration redisConfiguration() {
+        return redisConfiguration;
+    }
 
 }

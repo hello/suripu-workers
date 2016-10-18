@@ -12,6 +12,7 @@ import is.hello.gaibu.core.models.ExternalToken;
 import is.hello.gaibu.core.stores.ExpansionStore;
 import is.hello.gaibu.core.stores.ExternalOAuthTokenStore;
 import is.hello.gaibu.core.stores.PersistentExpansionDataStore;
+import redis.clients.jedis.JedisPool;
 
 /**
  * Created by pangwu on 9/23/14.
@@ -26,6 +27,7 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
     private final ExternalOAuthTokenStore<ExternalToken> externalTokenStore;
     private final PersistentExpansionDataStore expansionDataStore;
     private final Vault tokenKMSVault;
+    private final JedisPool jedisPool;
 
 
     public AlarmActionRecordProcessorFactory(
@@ -36,7 +38,8 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
             final ExpansionStore<Expansion> expansionStore,
             final ExternalOAuthTokenStore<ExternalToken> externalTokenStore,
             final PersistentExpansionDataStore expansionDataStore,
-            final Vault tokenKMSVault) {
+            final Vault tokenKMSVault,
+            final JedisPool jedisPool) {
 
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.scheduledRingTimeHistoryDAODynamoDB = scheduledRingTimeHistoryDAODynamoDB;
@@ -46,6 +49,7 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
         this.externalTokenStore = externalTokenStore;
         this.expansionDataStore = expansionDataStore;
         this.tokenKMSVault = tokenKMSVault;
+        this.jedisPool = jedisPool;
     }
 
 
@@ -58,7 +62,8 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
                 this.expansionStore,
                 this.externalTokenStore,
                 this.expansionDataStore,
-                this.tokenKMSVault
+                this.tokenKMSVault,
+                this.jedisPool
             );
     }
 }

@@ -49,10 +49,8 @@ import is.hello.gaibu.core.db.ExternalTokenDAO;
 import is.hello.gaibu.core.stores.PersistentExpansionDataStore;
 import is.hello.gaibu.core.stores.PersistentExpansionStore;
 import is.hello.gaibu.core.stores.PersistentExternalTokenStore;
+import redis.clients.jedis.JedisPool;
 
-/**
- * Created by pangwu on 9/23/14.
- */
 public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActionWorkerConfiguration> {
     private final static Logger LOGGER = LoggerFactory.getLogger(AlarmActionWorkerCommand.class);
 
@@ -155,6 +153,11 @@ public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActi
         final ExpansionDataDAO expansionDataDAO = commonDB.onDemand(ExpansionDataDAO.class);
         final PersistentExpansionDataStore externalAppDataStore = new PersistentExpansionDataStore(expansionDataDAO);
 
+        final JedisPool jedisPool = new JedisPool(
+            configuration.redisConfiguration().getHost(),
+            configuration.redisConfiguration().getPort()
+        );
+
         final IRecordProcessorFactory processorFactory = new AlarmActionRecordProcessorFactory(mergedUserInfoDynamoDB,
             scheduledRingTimeHistoryDAODynamoDB,
             configuration,
@@ -162,7 +165,8 @@ public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActi
             expansionStore,
             externalTokenStore,
             externalAppDataStore,
-            tokenKMSVault
+            tokenKMSVault,
+            jedisPool
         );
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();

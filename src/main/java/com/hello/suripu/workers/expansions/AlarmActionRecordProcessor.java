@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import is.hello.gaibu.core.models.DeviceExpansionPair;
 import is.hello.gaibu.core.models.Expansion;
 import is.hello.gaibu.core.models.ExpansionData;
 import is.hello.gaibu.core.models.ExpansionDeviceData;
@@ -159,8 +158,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 }
 
                 //Attempt to pull action from cache
-                final DeviceExpansionPair deviceExpansionPair = new DeviceExpansionPair(senseId, expansionId);
-                final Boolean actionComplete = attemptAlarmAction(deviceExpansionPair);
+                final Boolean actionComplete = attemptAlarmAction(senseId, expansionId);
 
                 if(actionComplete) {
                     successfulActions++;
@@ -197,23 +195,21 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 //        }
     }
 
-    public Boolean attemptAlarmAction(final DeviceExpansionPair deviceExpansionPair) {
+    public Boolean attemptAlarmAction(final String deviceId, final Long expansionId) {
 
-        final Optional<Expansion> expansionOptional = expansionStore.getApplicationById(deviceExpansionPair.expansionId);
+        final Optional<Expansion> expansionOptional = expansionStore.getApplicationById(expansionId);
         if(!expansionOptional.isPresent()) {
             LOGGER.warn("warn=expansion-not-found");
             return false;
         }
 
-        final String senseId = deviceExpansionPair.deviceId;
-
         final Expansion expansion = expansionOptional.get();
 
-        LOGGER.info("action=expansion-alarm sense_id={} expansions_id={}", senseId, expansion.id);
+        LOGGER.info("action=expansion-alarm sense_id={} expansions_id={}", deviceId, expansion.id);
 
-        final Optional<ExpansionData> expDataOptional = expansionDataStore.getAppData(expansion.id, senseId);
+        final Optional<ExpansionData> expDataOptional = expansionDataStore.getAppData(expansion.id, deviceId);
         if(!expDataOptional.isPresent()) {
-            LOGGER.error("error=no-ext-app-data expansion_id={} sense_id={}", expansion.id, senseId);
+            LOGGER.error("error=no-ext-app-data expansion_id={} sense_id={}", expansion.id, deviceId);
             return false;
         }
 
@@ -222,17 +218,17 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         final Optional<ExpansionDeviceData> expansionDeviceDataOptional = HomeAutomationExpansionDataFactory.getAppData(mapper, expData.data, expansion.serviceName);
 
         if(!expansionDeviceDataOptional.isPresent()){
-            LOGGER.error("error=bad-expansion-data expansion_id={} sense_id={}", expansion.id, senseId);
+            LOGGER.error("error=bad-expansion-data expansion_id={} sense_id={}", expansion.id, deviceId);
             return false;
         }
 
         final ExpansionDeviceData appData = expansionDeviceDataOptional.get();
 
-        final String decryptedToken = getDecryptedExternalToken(senseId, expansion, false);
+        final String decryptedToken = getDecryptedExternalToken(deviceId, expansion, false);
 
         final Optional<HomeAutomationExpansion> homeExpansionOptional = HomeAutomationExpansionFactory.getExpansion(configuration.expansionConfiguration().hueAppName(), expansion.serviceName, appData, decryptedToken);
         if(!homeExpansionOptional.isPresent()){
-            LOGGER.error("error=get-home-expansion-failed expansion_id={} sense_id={}", expansion.id, senseId);
+            LOGGER.error("error=get-home-expansion-failed expansion_id={} sense_id={}", expansion.id, deviceId);
             return false;
         }
 
@@ -242,7 +238,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         final Boolean isSuccessful = homeExpansion.runDefaultAlarmAction();
 
         if(!isSuccessful){
-            LOGGER.error("error=alarm-action-failed sense_id={} expansion_id={}", senseId, expansion.id);
+            LOGGER.error("error=alarm-action-failed sense_id={} expansion_id={}", deviceId, expansion.id);
         }
 
         return isSuccessful;

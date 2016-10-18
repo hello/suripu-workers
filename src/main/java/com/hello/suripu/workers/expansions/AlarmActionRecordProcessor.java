@@ -154,6 +154,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
                 if(allRecentActions.containsKey(deviceExpansionHash)){
                     //This action has already been executed
+                    LOGGER.info("action=action-already-executed sense_id={} expansion_id={} expected_ringtime={}", senseId, expansion.id, pb.getExpectedRingtimeUtc());
                     continue;
                 }
 
@@ -238,7 +239,6 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         final HomeAutomationExpansion homeExpansion = homeExpansionOptional.get();
 
         //Execute default alarm action for expansion
-//        LOGGER.info("action=run-alarm-action sense_id={} expansion_id={}", senseId, expansion.id);
         final Boolean isSuccessful = homeExpansion.runDefaultAlarmAction();
 
         if(!isSuccessful){
@@ -283,8 +283,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         final Map<String, Long> hashRingTimeMap = Maps.newHashMap();
         final Jedis jedis = jedisPool.getResource();
         try {
-            //Get all elements in the index range provided
-            final Long nowMillis = DateTime.now(DateTimeZone.UTC).getMillis();
+            //Get all elements in the index range provided (score greater than oldest event millis)
             final Set<Tuple> allRecentAlarmActions = jedis.zrevrangeByScoreWithScores(ALARM_ACTION_ATTEMPTS_KEY, Double.MAX_VALUE, oldestEvent);
 
             for (final Tuple attempt:allRecentAlarmActions) {

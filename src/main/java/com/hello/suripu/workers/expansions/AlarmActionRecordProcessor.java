@@ -35,6 +35,7 @@ import is.hello.gaibu.core.models.ExternalToken;
 import is.hello.gaibu.core.stores.ExpansionStore;
 import is.hello.gaibu.core.stores.ExternalOAuthTokenStore;
 import is.hello.gaibu.core.stores.PersistentExpansionDataStore;
+import is.hello.gaibu.core.utils.TokenUtils;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionDataFactory;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionFactory;
 import is.hello.gaibu.homeauto.interfaces.HomeAutomationExpansion;
@@ -205,7 +206,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         final Expansion expansion = expansionOptional.get();
 
-        LOGGER.info("action=expansion-alarm sense_id={} expansions_id={}", deviceId, expansion.id);
+        LOGGER.info("action=expansion-alarm sense_id={} expansion_id={}", deviceId, expansion.id);
 
         final Optional<ExpansionData> expDataOptional = expansionDataStore.getAppData(expansion.id, deviceId);
         if(!expDataOptional.isPresent()) {
@@ -224,7 +225,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         final ExpansionDeviceData appData = expansionDeviceDataOptional.get();
 
-        final String decryptedToken = getDecryptedExternalToken(deviceId, expansion, false);
+        final String decryptedToken = TokenUtils.getDecryptedExternalToken(externalTokenStore, tokenKMSVault, deviceId, expansion, false);
 
         final Optional<HomeAutomationExpansion> homeExpansionOptional = HomeAutomationExpansionFactory.getExpansion(configuration.expansionConfiguration().hueAppName(), expansion.serviceName, appData, decryptedToken);
         if(!homeExpansionOptional.isPresent()){
@@ -315,41 +316,5 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 LOGGER.error(e.getMessage());
             }
         }
-    }
-
-    //TODO: Don't do this here. Needs to be moved to gaibu-core
-    private String getDecryptedExternalToken(final String deviceId, final Expansion expansion, final Boolean isRefreshToken) {
-        final Optional<ExternalToken> externalTokenOptional = externalTokenStore.getTokenByDeviceId(deviceId, expansion.id);
-        if(!externalTokenOptional.isPresent()) {
-            LOGGER.warn("warning=token-not-found");
-        }
-
-        ExternalToken externalToken = externalTokenOptional.get();
-
-        //check for expired token and attempt refresh
-        if(externalToken.hasExpired(DateTime.now(DateTimeZone.UTC))) {
-            LOGGER.error("error=token-expired device_id={}", deviceId);
-//            final Optional<ExternalToken> refreshedTokenOptional = refreshToken(deviceId, expansion, externalToken);
-//            if(!refreshedTokenOptional.isPresent()){
-//                LOGGER.error("error=token-refresh-failed device_id={}", deviceId);
-//            }
-//
-//            externalToken = refreshedTokenOptional.get();
-        }
-
-        final Map<String, String> encryptionContext = Maps.newHashMap();
-        encryptionContext.put("application_id", externalToken.appId.toString());
-        final Optional<String> decryptedTokenOptional;
-        if(isRefreshToken) {
-            decryptedTokenOptional = tokenKMSVault.decrypt(externalToken.refreshToken, encryptionContext);
-        } else {
-            decryptedTokenOptional = tokenKMSVault.decrypt(externalToken.accessToken, encryptionContext);
-        }
-
-
-        if(!decryptedTokenOptional.isPresent()) {
-            LOGGER.error("error=token-decryption-failure device_id={}", deviceId);
-        }
-        return decryptedTokenOptional.get();
     }
 }

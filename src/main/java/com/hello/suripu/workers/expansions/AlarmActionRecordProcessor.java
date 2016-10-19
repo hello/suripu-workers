@@ -116,14 +116,14 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 }
                 final String senseId = pb.getDeviceId();
 
-                if(!pb.hasExpansionId() || !pb.hasExpectedRingtimeUtc()) {
+                if(!pb.hasServiceType() || !pb.hasExpectedRingtimeUtc()) {
                     LOGGER.warn("warn=invalid-protobuf sense_id={}", senseId);
                     continue;
                 }
 
-                final Long expansionId = pb.getExpansionId();
+                final ExpansionProtos.ServiceType serviceType = pb.getServiceType();
 
-                final Optional<Expansion> expansionOptional = expansionStore.getApplicationById(expansionId);
+                final Optional<Expansion> expansionOptional = expansionStore.getApplicationByName(serviceType.name());
                 if(!expansionOptional.isPresent()) {
                     LOGGER.warn("warning=expansion-not-found");
                     continue;
@@ -158,7 +158,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 }
 
                 //Attempt to pull action from cache
-                final Boolean actionComplete = attemptAlarmAction(senseId, expansionId);
+                final Boolean actionComplete = attemptAlarmAction(senseId, expansion.id);
 
                 if(actionComplete) {
                     successfulActions++;

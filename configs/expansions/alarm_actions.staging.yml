@@ -8,12 +8,47 @@ graphite:
     - io.dropwizard
     - com.hello
 
-kinesis:
-  endpoint : https://kinesis.us-east-1.amazonaws.com
-  streams :
-      sense_sensors_data : dev_sense_sensors_data
+common_db:
+  driverClass: org.postgresql.Driver
+  user: ingress_user
+  password: hello ingress user
+  url: jdbc:postgresql://chanku-test.cdawj8qazvva.us-east-1.rds.amazonaws.com:5432/chanku
+  properties:
+    hibernate.dialect: org.hibernate.spatial.dialect.postgis.PostgisDialect
 
-app_name: AlarmWorker
+  # any properties specific to your JDBC driver:
+  properties:
+    charSet: UTF-8
+
+  # the maximum amount of time to wait on an empty pool before throwing an exception
+  maxWaitForConnection: 1s
+
+  # the SQL query to run when validating a connection's liveness
+  validationQuery: "/* MyService Health Check */ SELECT 1"
+
+  initialSize: 8
+
+  # the minimum number of connections to keep open
+  minSize: 8
+
+  # the maximum number of connections to keep open
+  maxSize: 32
+
+  # whether or not idle connections should be validated
+  checkConnectionWhileIdle: false
+
+  # the amount of time to sleep between runs of the idle connection validation, abandoned cleaner and idle pool resizing
+  evictionInterval: 10s
+
+  # the minimum amount of time an connection must sit idle in the pool before it is eligible for eviction
+  minIdleTime: 1 minute
+
+kinesis:
+  endpoint: https://kinesis.us-east-1.amazonaws.com
+  streams:
+      alarm_actions : dev_alarm_actions
+
+app_name: AlarmActionsWorker
 
 max_records: 1000
 
@@ -24,20 +59,22 @@ logging:
   level: INFO
   loggers:
     com.hello.suripu.workers: INFO
+    com.hello.suripu.core: INFO
+    is.hello.gaibu: INFO
   appenders:
     - type: file
       threshold: DEBUG
-      currentLogFilename: /var/log/suripu-workers/suripu-workers-alarm.log
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-alarm-actions.log
       # When the log file rotates, the archived log will be renamed to this and gzipped. The
       # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
       # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
-      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-alarm-%d{yyyy-MM-dd}.log.gz
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-alarm-actions-%d{yyyy-MM-dd}.log.gz
       # The number of archived files to keep.
       archivedFileCount: 7
     - type: papertrail
       host: logs2.papertrailapp.com
       port: 11366
-      ident: suripu-workers-alarm-dev
+      ident: suripu-workers-alarm-actions-dev
       # timezone: UTC
       # facility: USER
       # sendLocalName: true
@@ -60,8 +97,17 @@ dynamodb:
     smart_alarm_log: http://dynamodb.us-east-1.amazonaws.com
     timezone_history: http://dynamodb.us-east-1.amazonaws.com
 
-aggregate_window_size_min: 15
-
 smart_alarm_process_ahead_in_minutes: 30
 
-light_sleep_init_threshold: 0.2
+keys_management_service:
+  endpoint: https://kms.us-east-1.amazonaws.com
+  keys:
+    token: arn:aws:kms:us-east-1:053216739513:key/9ab23bc3-1b49-4f02-a951-a9d97ca906bc # external app tokens
+
+expansions:
+  hue_app_name: sense_staging
+
+redis:
+  host: stats-002.xoe7je.0001.use1.cache.amazonaws.com
+  port: 6379
+

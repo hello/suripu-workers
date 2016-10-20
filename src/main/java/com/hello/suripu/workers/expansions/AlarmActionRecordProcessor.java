@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hello.suripu.api.expansions.ExpansionProtos;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
+import com.hello.suripu.core.models.ValueRange;
 import com.hello.suripu.core.speech.interfaces.Vault;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
 
@@ -141,7 +142,6 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 }
 
                 if(secondsTillRing > bufferTimeSeconds) {
-                    LOGGER.debug("Alarm action too far in the future.");
                     continue;
                 }
 
@@ -158,8 +158,10 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                     continue;
                 }
 
+                final ValueRange actionValueRange = new ValueRange(pb.getTargetValueMin(), pb.getTargetValueMax());
+
                 //Attempt to pull action from cache
-                final Boolean actionComplete = attemptAlarmAction(senseId, expansion.id);
+                final Boolean actionComplete = attemptAlarmAction(senseId, expansion.id, actionValueRange);
 
                 if(actionComplete) {
                     successfulActions++;
@@ -196,7 +198,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 //        }
     }
 
-    public Boolean attemptAlarmAction(final String deviceId, final Long expansionId) {
+    public Boolean attemptAlarmAction(final String deviceId, final Long expansionId, final ValueRange actionValues) {
 
         final Optional<Expansion> expansionOptional = expansionStore.getApplicationById(expansionId);
         if(!expansionOptional.isPresent()) {
@@ -225,7 +227,12 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         final ExpansionDeviceData appData = expansionDeviceDataOptional.get();
 
-        final String decryptedToken = TokenUtils.getDecryptedExternalToken(externalTokenStore, tokenKMSVault, deviceId, expansion, false);
+        final Optional<String> decryptedTokenOptional = TokenUtils.getDecryptedExternalToken(externalTokenStore, tokenKMSVault, deviceId, expansion, false);
+
+        if(!decryptedTokenOptional.isPresent()) {
+            return false;
+        }
+        final String decryptedToken = decryptedTokenOptional.get();
 
         final Optional<HomeAutomationExpansion> homeExpansionOptional = HomeAutomationExpansionFactory.getExpansion(configuration.expansionConfiguration().hueAppName(), expansion.serviceName, appData, decryptedToken);
         if(!homeExpansionOptional.isPresent()){
@@ -236,7 +243,8 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         final HomeAutomationExpansion homeExpansion = homeExpansionOptional.get();
 
         //Execute default alarm action for expansion
-        final Boolean isSuccessful = homeExpansion.runDefaultAlarmAction();
+//        final Boolean isSuccessful = homeExpansion.runDefaultAlarmAction();
+        final Boolean isSuccessful = homeExpansion.runAlarmAction(actionValues);
 
         if(!isSuccessful){
             LOGGER.error("error=alarm-action-failed sense_id={} expansion_id={}", deviceId, expansion.id);

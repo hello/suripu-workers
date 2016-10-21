@@ -46,7 +46,7 @@ public class SupichiRecordProcessor implements IRecordProcessor {
     private final SSEAwsKeyManagementParams s3SSEKey;
     private final SpeechTimelineIngestDAO speechTimelineIngestDAO;
     private final SpeechResultIngestDAO speechResultIngestDAO;
-    private final Boolean debug;
+    private final Boolean logUUID;
 
     public SupichiRecordProcessor(
                                   final AmazonS3 s3,
@@ -54,13 +54,13 @@ public class SupichiRecordProcessor implements IRecordProcessor {
                                   final SSEAwsKeyManagementParams s3SSEKey,
                                   final SpeechTimelineIngestDAO speechTimelineIngestDAO,
                                   final SpeechResultIngestDAO speechResultIngestDAO,
-                                  final Boolean debug) {
+                                  final Boolean logUUID) {
         this.s3Bucket = s3Bucket;
         this.s3 = s3;
         this.s3SSEKey = s3SSEKey;
         this.speechTimelineIngestDAO = speechTimelineIngestDAO;
         this.speechResultIngestDAO = speechResultIngestDAO;
-        this.debug = debug;
+        this.logUUID = logUUID;
     }
 
     @Override
@@ -95,9 +95,9 @@ public class SupichiRecordProcessor implements IRecordProcessor {
                             final boolean saved = saveAudio(speechResultsData, sequenceNumber);
 
                             // only log uuid in dev
-                            final String uuidLog = (debug) ? speechResultsData.getAudioUuid() : MASK_UUID;
+                            final String uuid = (logUUID) ? speechResultsData.getAudioUuid() : MASK_UUID;
                             LOGGER.debug("action=save-audio success={} sense_id={}, uuid={}, created={}",
-                                    saved, speechResultsData.getSenseId(), uuidLog, speechResultsData.getCreated());
+                                    saved, speechResultsData.getSenseId(), uuid, speechResultsData.getCreated());
                             numAudio += (saved) ? 1 : 0;
                         }
                 }
@@ -138,16 +138,16 @@ public class SupichiRecordProcessor implements IRecordProcessor {
     private void updateSpeechResult(final SpeechResultsKinesis.SpeechResultsData speechResultsData, final String sequenceNumber) {
         final SpeechResult data = kinesisDataToSpeechResult(speechResultsData);
         final Boolean updated = speechResultIngestDAO.updateItem(data);
-        final String uuidLog = (debug) ? speechResultsData.getAudioUuid() : MASK_UUID;
-        LOGGER.debug("action=speech-result-update success={} uuid={} sequence_number={}", updated, uuidLog, sequenceNumber);
+        final String uuid = (logUUID) ? speechResultsData.getAudioUuid() : MASK_UUID;
+        LOGGER.debug("action=speech-result-update success={} uuid={} sequence_number={}", updated, uuid, sequenceNumber);
     }
 
 
     private void saveTranscriptionResult(final SpeechResultsKinesis.SpeechResultsData speechResultsData, final String sequenceNumber) {
         final SpeechResult data = kinesisDataToSpeechResult(speechResultsData);
         final Boolean saved = speechResultIngestDAO.putItem(data);
-        final String uuidLog = (debug) ? speechResultsData.getAudioUuid() : MASK_UUID;
-        LOGGER.debug("action=speech-result-put success={} uuid={} sequence_number={}", saved, uuidLog, sequenceNumber);
+        final String uuid = (logUUID) ? speechResultsData.getAudioUuid() : MASK_UUID;
+        LOGGER.debug("action=speech-result-put success={} uuid={} sequence_number={}", saved, uuid, sequenceNumber);
     }
 
     private SpeechResult kinesisDataToSpeechResult(final SpeechResultsKinesis.SpeechResultsData speechResultsData) {

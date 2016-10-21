@@ -95,7 +95,6 @@ public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActi
 
         final ImmutableMap<QueueName, String> queueNames = configuration.getQueues();
 
-        LOGGER.debug("{}", queueNames);
         final String queueName = queueNames.get(QueueName.ALARM_ACTIONS);
         LOGGER.info("\n\n\n!!! This worker is using the following queue: {} !!!\n\n\n", queueName);
 

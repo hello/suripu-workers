@@ -1,7 +1,7 @@
 package com.hello.suripu.workers.alarm;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
+import com.hello.suripu.coredropwizard.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 
 

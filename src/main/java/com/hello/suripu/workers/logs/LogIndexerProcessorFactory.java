@@ -10,7 +10,7 @@ import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
-import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.segment.analytics.Analytics;
 
 public class LogIndexerProcessorFactory implements IRecordProcessorFactory {

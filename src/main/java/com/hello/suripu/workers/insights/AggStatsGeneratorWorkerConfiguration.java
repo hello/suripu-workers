@@ -1,17 +1,26 @@
-package com.hello.suripu.workers.sense;
+package com.hello.suripu.workers.insights;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.hello.suripu.coredropwizard.configuration.NewDynamoDBConfiguration;
-import com.hello.suripu.coredropwizard.configuration.RedisConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
+import io.dropwizard.db.DataSourceFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
 
-import io.dropwizard.db.DataSourceFactory;
+/**
+ * Created by jyfan on 7/5/16.
+ */
+public class AggStatsGeneratorWorkerConfiguration extends WorkerConfiguration {
 
-public class SenseSaveWorkerConfiguration extends WorkerConfiguration {
+    @Valid
+    @NotNull
+    @JsonProperty("agg_stats_version")
+    private String aggStatsVersion;
+    public String getAggStatsVersion() {
+        return this.aggStatsVersion;
+    }
 
     @Valid
     @NotNull
@@ -23,7 +32,7 @@ public class SenseSaveWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull
-    @JsonProperty("dynamodb")
+    @JsonProperty("dynamo_db")
     private NewDynamoDBConfiguration dynamoDBConfiguration;
     public NewDynamoDBConfiguration dynamoDBConfiguration(){
         return dynamoDBConfiguration;
@@ -34,20 +43,16 @@ public class SenseSaveWorkerConfiguration extends WorkerConfiguration {
     @Max(1000)
     @JsonProperty("max_records")
     private Integer maxRecords;
-
     public Integer getMaxRecords() {
         return maxRecords;
     }
 
     @Valid
     @NotNull
-    @JsonProperty("redis")
-    private RedisConfiguration redisConfiguration;
-    public RedisConfiguration getRedisConfiguration() {
-        return redisConfiguration;
+    @JsonProperty("sleep_stats_version")
+    private String sleepStatsVersion;
+    public String getSleepStatsVersion() {
+        return this.sleepStatsVersion;
     }
 
-    @JsonProperty("trim_horizon")
-    private Boolean trimHorizon = Boolean.TRUE;
-    public Boolean getTrimHorizon() {return trimHorizon;}
 }

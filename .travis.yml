@@ -1,6 +1,6 @@
 language: java
 jdk:
-  - openjdk7
+  - oraclejdk8
 install: mvn --version
 sudo: false
 env:
@@ -18,15 +18,15 @@ script:
 - mkdir deb-pkg
 - cp configs/alarm/alarm_worker.prod.yml $TEMP_DIR/etc/hello/alarm_worker.yml
 - cp configs/insights/insights_generator.prod.yml $TEMP_DIR/etc/hello/insights_generator.yml
+- cp configs/insights/aggstats_generator.prod.yml $TEMP_DIR/etc/hello/aggstats_generator.yml
 - cp configs/logs/index_logs_worker.prod.yml $TEMP_DIR/etc/hello/index_logs_worker.yml
 - cp configs/logs/timeline_logs.prod.yml $TEMP_DIR/etc/hello/timeline_logs.yml
-- cp configs/pill/pill.prod.yml $TEMP_DIR/etc/hello/pill.yml
 - cp configs/pill/pill_save_ddb.prod.yml $TEMP_DIR/etc/hello/pill_save_ddb.yml
 - cp configs/push/push-notifications.prod.yml $TEMP_DIR/etc/hello/push-notifications.yml
 - cp configs/sense/sense_last_seen.prod.yml $TEMP_DIR/etc/hello/sense_last_seen.yml
-- cp configs/sense/sense_save.prod.yml $TEMP_DIR/etc/hello/sense_save.yml
 - cp configs/sense/sense_save_ddb.prod.yml $TEMP_DIR/etc/hello/sense_save_ddb.yml
 - cp configs/fanout/sense_stream_fanout.prod.yml $TEMP_DIR/etc/hello/sense_stream_fanout.yml
+- cp configs/supichi/supichi.prod.yml $TEMP_DIR/etc/hello/supichi.yml
 - cp init/*.conf $TEMP_DIR/etc/init/
 - mvn --settings settings.xml clean test
 before_deploy:
@@ -34,6 +34,7 @@ before_deploy:
 - mvn versions:set -DnewVersion=$BUILD_NUMBER
 - mvn versions:commit
 - mvn --settings settings.xml -DskipITs deploy
+- gem install json -v 1.8.3
 - gem install fpm
 - cp target/$APP_NAME-$BUILD_NUMBER.jar $TEMP_DIR/opt/hello/$APP_NAME.jar
 - fpm --force -s dir -C $TEMP_DIR -t deb --name "$APP_NAME" --version $BUILD_NUMBER

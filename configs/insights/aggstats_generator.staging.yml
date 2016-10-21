@@ -13,6 +13,7 @@ common_db:
   user: ingress_user
   password: hello ingress user
   url: jdbc:postgresql://chanku-test.cdawj8qazvva.us-east-1.rds.amazonaws.com:5432/chanku
+
   properties:
     hibernate.dialect: org.hibernate.spatial.dialect.postgis.PostgisDialect
 
@@ -46,47 +47,51 @@ common_db:
 kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com
   streams :
-    sense_sensors_data : dev_sense_sensors_data
+    batch_pill_data : dev_batch_pill_data
 
-app_name: SenseSaveConsumerDDB
+app_name: AggStatsGeneratorConsumerDev
 
 max_records: 100
 
+# Logging settings.
 logging:
   level: INFO
   loggers:
     com.hello.suripu.workers: DEBUG
+    com.hello.suripu.core: DEBUG
+    com.hello.suripu.core.processors.AggStatsProcessor: DEBUG
   appenders:
     - type: file
-      threshold: INFO
-      currentLogFilename: /var/log/suripu-workers/suripu-workers-sense-saveddb.log
-      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-sense-saveddb-%d{yyyy-MM-dd}.log.gz
+      threshold: DEBUG
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-aggstats.log
+      # When the log file rotates, the archived log will be renamed to this and gzipped. The
+      # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
+      # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-aggstats-%d{yyyy-MM-dd}.log.gz
+      # The number of archived files to keep.
       archivedFileCount: 7
     - type: papertrail
       host: logs2.papertrailapp.com
       port: 11366
-      ident: suripu-workers-sense-saveddb-dev
-      # timezone: UTC
-      # facility: USER
-      # sendLocalName: true
+      ident: suripu-workers-aggstats-dev
 
-dynamodb:
+dynamo_db:
   region: us-east-1
   tables:
-    alarm_info: alarm_info
-    features: features
-    sense_prefix: sense
-    sense_last_seen : sense_last_seen
-    calibration : calibration
-    device_data: sense_data
-  endpoints:
-    alarm_info: http://dynamodb.us-east-1.amazonaws.com
-    features : http://dynamodb.us-east-1.amazonaws.com
-    sense_prefix: http://dynamodb.us-east-1.amazonaws.com
-    sense_last_seen : http://dynamodb.us-east-1.amazonaws.com
-    calibration : http://dynamodb.us-east-1.amazonaws.com
-    device_data: http://dynamodb.us-east-1.amazonaws.com
+      agg_stats: agg_stats
+      calibration: calibration
+      device_data: sense_data
+      features: features
+      pill_data: pill_data
+      sleep_stats: sleep_stats
 
-redis:
-  host: localhost
-  port: 6379
+  endpoints:
+      agg_stats: http://dynamodb.us-east-1.amazonaws.com
+      calibration: http://dynamodb.us-east-1.amazonaws.com
+      device_data: http://dynamodb.us-east-1.amazonaws.com
+      features: http://dynamodb.us-east-1.amazonaws.com
+      pill_data: http://dynamodb.us-east-1.amazonaws.com
+      sleep_stats: http://dynamodb.us-east-1.amazonaws.com
+
+sleep_stats_version: v_0_2
+agg_stats_version: v_0_1

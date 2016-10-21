@@ -3,9 +3,10 @@ package com.hello.suripu.workers.framework;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.flipper.DynamoDBAdapter;
 import com.hello.suripu.core.processors.InsightProcessor;
-import com.hello.suripu.core.processors.TimelineProcessor;
+import com.hello.suripu.coredropwizard.timeline.InstrumentedTimelineProcessor;
 import com.hello.suripu.workers.alarm.AlarmRecordProcessor;
 import com.hello.suripu.workers.fanout.SenseStreamFanout;
+import com.hello.suripu.workers.insights.AggStatsGenerator;
 import com.hello.suripu.workers.insights.InsightsGenerator;
 import com.hello.suripu.workers.logs.SenseStructuredLogIndexer;
 import com.hello.suripu.workers.logs.timeline.TimelineLogProcessor;
@@ -17,15 +18,17 @@ import com.hello.suripu.workers.sense.SenseSaveProcessor;
 import com.hello.suripu.workers.sense.lastSeen.SenseLastSeenProcessor;
 import com.librato.rollout.RolloutAdapter;
 import com.librato.rollout.RolloutClient;
-import dagger.Module;
-import dagger.Provides;
 
 import javax.inject.Singleton;
+
+import dagger.Module;
+import dagger.Provides;
 
 /**
  * Created by pangwu on 12/4/14.
  */
 @Module(injects = {
+        AggStatsGenerator.class,
         AlarmRecordProcessor.class,
         S3RecordProcessor.class,
         SavePillDataProcessor.class,
@@ -34,7 +37,7 @@ import javax.inject.Singleton;
         InsightsGenerator.class,
         InsightProcessor.class,
         PushNotificationsProcessor.class,
-        TimelineProcessor.class,
+        InstrumentedTimelineProcessor.class,
         TimelineLogProcessor.class,
         SenseLastSeenProcessor.class,
         SenseStreamFanout.class,

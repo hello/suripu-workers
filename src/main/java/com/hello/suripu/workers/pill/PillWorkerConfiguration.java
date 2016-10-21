@@ -1,23 +1,16 @@
 package com.hello.suripu.workers.pill;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hello.suripu.coredw8.configuration.NewDynamoDBConfiguration;
+import com.hello.suripu.coredropwizard.configuration.NewDynamoDBConfiguration;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
-import io.dropwizard.db.DataSourceFactory;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.NotNull;
 
-public class PillWorkerConfiguration extends WorkerConfiguration {
+import io.dropwizard.db.DataSourceFactory;
 
-    @Valid
-    @NotNull
-    @JsonProperty("sensors_db")
-    private DataSourceFactory sensorsDB = new DataSourceFactory();
-    public DataSourceFactory getSensorsDB() {
-        return sensorsDB;
-    }
+public class PillWorkerConfiguration extends WorkerConfiguration {
 
     @Valid
     @NotNull

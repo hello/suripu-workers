@@ -3,23 +3,20 @@ debug: true
 graphite:
   host: carbon.hostedgraphite.com
   api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
-  reporting_interval_in_seconds: 15
+  reporting_interval_in_seconds: 30
   include_metrics:
     - io.dropwizard
     - com.hello
 
+# Relevant tables: sense_colors, account_tracker_map
 common_db:
-  # the name of your JDBC driver
   driverClass: org.postgresql.Driver
+  user: [your uname]
+  password: [your pw]
+  url: jdbc:postgresql://localhost:5432/[your db name]
 
-  # the username
-  user: ingress_user
-
-  # the password
-  password: hello ingress user
-
-  # the JDBC URL
-  url: jdbc:postgresql://localhost:5432/hello_2014_09_22
+  properties:
+    hibernate.dialect: org.hibernate.spatial.dialect.postgis.PostgisDialect
 
   # any properties specific to your JDBC driver:
   properties:
@@ -51,15 +48,11 @@ common_db:
 kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com
   streams :
-    batch_pill_data : batch_pill_data
-    push_notifications : dev_push_notifications
+    batch_pill_data : dev_batch_pill_data
 
-app_name: SavePillDataConsumerDDB
+app_name: AggStatsGeneratorConsumerDev
 
 max_records: 100
-
-# batch save to DB size
-batch_size: 80
 
 # Logging settings.
 logging:
@@ -67,23 +60,29 @@ logging:
   loggers:
     com.hello.suripu.workers: DEBUG
     com.hello.suripu.core: DEBUG
+    com.hello.suripu.core.processors.AggStatsProcessor: INFO
   appenders:
     - type: console
-      # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
+    # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
       timeZone: UTC
 
-dynamodb:
+dynamo_db:
   region: us-east-1
   tables:
-    alarm_info: alarm_info
-    features: features
-    pill_key_store : pill_key_store
-    pill_heartbeat: pill_heartbeat
-    pill_data: pill_data
-  endpoints:
-    alarm_info: http://localhost:7777
-    features : http://localhost:7777
-    pill_key_store : http://localhost:7777
-    pill_heartbeat: http://localhost:7777
-    pill_data: http://localhost:7777
+      agg_stats: agg_stats
+      calibration: calibration
+      device_data: sense_data
+      features: features
+      pill_data: pill_data
+      sleep_stats: sleep_stats
 
+  endpoints:
+      agg_stats: http://localhost:7777
+      calibration: http://localhost:7777
+      device_data: http://localhost:7777
+      features: http://localhost:7777
+      pill_data: http://localhost:7777
+      sleep_stats: http://localhost:7777
+
+sleep_stats_version: v_0_2
+agg_stats_version: v_0_1

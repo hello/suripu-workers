@@ -1,5 +1,8 @@
 package com.hello.suripu.workers.pill;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -12,8 +15,6 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
 import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
@@ -25,17 +26,16 @@ import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.PillDataDAODynamoDB;
 import com.hello.suripu.core.db.PillDataIngestDAO;
 import com.hello.suripu.core.db.PillHeartBeatDAO;
-import com.hello.suripu.core.db.TrackerMotionDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
-import com.hello.suripu.coredw8.clients.AmazonDynamoDBClientFactory;
-import com.hello.suripu.coredw8.metrics.RegexMetricFilter;
+import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
+import com.hello.suripu.coredropwizard.metrics.RegexMetricFilter;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
 import com.hello.suripu.workers.notifications.PushNotificationKinesisProducer;
-import io.dropwizard.jdbi.DBIFactory;
-import io.dropwizard.setup.Environment;
+
 import net.sourceforge.argparse4j.inf.Namespace;
+
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,26 +44,21 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 
+import io.dropwizard.jdbi.DBIFactory;
+import io.dropwizard.setup.Environment;
+
 public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorkerConfiguration> {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(PillWorkerCommand.class);
 
-    private boolean useDynamoPillData = false;
-
     public PillWorkerCommand(String name, String description) {
         super(name, description);
-    }
-
-    public PillWorkerCommand(String name, String description, final boolean useDynamoPillData) {
-        this(name, description);
-        this.useDynamoPillData = useDynamoPillData;
     }
 
     @Override
     protected void run(Environment environment, Namespace namespace, PillWorkerConfiguration configuration) throws Exception {
         final DBIFactory factory = new DBIFactory();
         final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
-        final DBI sensorsDBI = factory.build(environment, configuration.getSensorsDB(), "postgresql-sensors");
 
         // Joda Argument factory is not supported by default by DW, needs to be added manually
         commonDBI.registerArgumentFactory(new JodaArgumentFactory());
@@ -139,16 +134,8 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
         final AmazonDynamoDB pillDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.PILL_HEARTBEAT);
         final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB = PillHeartBeatDAODynamoDB.create(pillDynamoDB, tableNames.get(DynamoDBTableName.PILL_HEARTBEAT));
 
-        PillDataIngestDAO pillDataIngestDAO;
-        Boolean savePillHeartBeat = true;
-        if (useDynamoPillData) {
-            final AmazonDynamoDB trackerMotionDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.PILL_DATA);
-            pillDataIngestDAO = new PillDataDAODynamoDB(trackerMotionDynamoDB, tableNames.get(DynamoDBTableName.PILL_DATA));
-            savePillHeartBeat = false;
-        } else {
-            sensorsDBI.registerArgumentFactory(new JodaArgumentFactory());
-            pillDataIngestDAO = sensorsDBI.onDemand(TrackerMotionDAO.class);
-        }
+        final AmazonDynamoDB trackerMotionDynamoDB = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.PILL_DATA);
+        final PillDataIngestDAO pillDataIngestDAO = new PillDataDAODynamoDB(trackerMotionDynamoDB, tableNames.get(DynamoDBTableName.PILL_DATA));
 
         final AmazonKinesis amazonKinesis = new AmazonKinesisClient(awsCredentialsProvider);
         final String pushNotificationStreamName = queueNames.get(QueueName.PUSH_NOTIFICATIONS);
@@ -166,7 +153,7 @@ public final class PillWorkerCommand extends WorkerEnvironmentCommand<PillWorker
                 pillKeyStore,
                 deviceDAO,
                 pillHeartBeatDAODynamoDB,
-                savePillHeartBeat,
+                true,
                 environment.metrics(),
                 configuration.getBatteryNotificationThreshold(),
                 pushNotificationKinesisProducer

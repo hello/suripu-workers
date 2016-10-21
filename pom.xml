@@ -8,11 +8,10 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
-        <suripu.version>0.8.5650</suripu.version>
+        <suripu.version>0.8.5746</suripu.version>
         <jodatime.version>2.9.4</jodatime.version>
         <dropwizard.version>1.0.0</dropwizard.version>
-        <metrics.version>3.1.0</metrics.version>
-        <aws.sdk.version>1.10.34</aws.sdk.version>
+        <metrics.version>3.1.2</metrics.version>
         <librato.reporter.version>2.2.0.5</librato.reporter.version>
         <dagger.version>1.2.2</dagger.version>
     </properties>
@@ -106,6 +105,10 @@
                 <exclusion>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.protobuf</groupId>
+                    <artifactId>protobuf-java</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

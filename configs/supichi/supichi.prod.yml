@@ -1,0 +1,54 @@
+debug: false
+metrics_enabled: true
+graphite:
+  host: carbon.hostedgraphite.com
+  api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
+  reporting_interval_in_seconds: 10
+  include_metrics:
+    - is.hello
+    - com.hello
+    - io.dropwizard
+
+logging:
+  level: INFO
+  loggers:
+    com.hello: DEBUG
+    is.hello: DEBUG
+    com.amazonaws: INFO
+  appenders:
+    - type: console
+      threshold: DEBUG
+
+dynamodb:
+  region: us-east-1
+  tables:
+    speech_results: prod_speech_results
+    speech_timeline: prod_speech_timeline
+  endpoints:
+    speech_results: http://dynamodb.us-east-1.amazonaws.com
+    speech_timeline: http://dynamodb.us-east-1.amazonaws.com
+
+sense_upload_audio:  # bucket to save audio uploaded from Sense
+  s3_bucket_name: hello-voice-upload-prod
+  s3_audio_prefix: sense_1_5
+
+keys_management_service:
+  endpoint: https://kms.us-east-1.amazonaws.com
+  keys:
+    uuid: arn:aws:kms:us-east-1:053216739513:key/554047d9-7171-4e31-9403-0d2101234775 # audio_uuid_prod
+    audio: arn:aws:kms:us-east-1:053216739513:key/e9e9640b-9c47-4f17-916b-bb50f809b430 # audio_upload_prod
+    token: arn:aws:kms:us-east-1:053216739513:key/2b67cc06-2780-4d11-9533-d98f6bc74033 # external app tokens prod
+
+s3_endpoint: https://s3.dualstack.us-east-1.amazonaws.com  # for kms
+
+kinesis:
+  endpoint : https://kinesis.us-east-1.amazonaws.com
+  streams :
+    speech_results : prod_speech_results
+
+app_name: SpeechKinesisProcessProd
+
+trim_horizon: false # false == LATEST
+
+max_records: 100
+

@@ -286,8 +286,10 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
     public Map<String, Long> getAllRecentActions(final Long oldestEvent) {
         final Map<String, Long> hashRingTimeMap = Maps.newHashMap();
-        final Jedis jedis = jedisPool.getResource();
+        Jedis jedis = null;
+
         try {
+            jedis = jedisPool.getResource();
             //Get all elements in the index range provided (score greater than oldest event millis)
             final Set<Tuple> allRecentAlarmActions = jedis.zrevrangeByScoreWithScores(ALARM_ACTION_ATTEMPTS_KEY, Double.MAX_VALUE, oldestEvent);
 

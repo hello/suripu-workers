@@ -108,6 +108,6 @@ expansions:
   hue_app_name: sense_staging
 
 redis:
-  host: stats-002.xoe7je.0001.use1.cache.amazonaws.com
+  host: localhost
   port: 6379
 

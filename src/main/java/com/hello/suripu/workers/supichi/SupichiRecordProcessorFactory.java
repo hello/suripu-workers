@@ -8,8 +8,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.hello.suripu.core.speech.interfaces.SpeechResultIngestDAO;
 import com.hello.suripu.core.speech.interfaces.SpeechTimelineIngestDAO;
 
-import static sun.awt.geom.Crossings.debug;
-
 /**
  * Created by ksg on 8/11/16
  */

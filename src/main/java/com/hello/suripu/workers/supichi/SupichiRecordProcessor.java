@@ -92,8 +92,8 @@ public class SupichiRecordProcessor implements IRecordProcessor {
     }
 
     @Override
-    public void initialize(String shardId) {
-        shardId = shardId;
+    public void initialize(final String s) {
+        this.shardId = s;
         LOGGER.debug("shard id = {}", shardId);
     }
 

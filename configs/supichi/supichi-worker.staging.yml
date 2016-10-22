@@ -12,7 +12,7 @@ graphite:
 logging:
   level: INFO
   loggers:
-    com.hello.suripu.workers: DEBUG
+    com.hello: DEBUG
     is.hello: DEBUG
   appenders:
     - type: file

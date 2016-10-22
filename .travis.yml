@@ -27,6 +27,7 @@ script:
 - cp configs/sense/sense_save_ddb.prod.yml $TEMP_DIR/etc/hello/sense_save_ddb.yml
 - cp configs/fanout/sense_stream_fanout.prod.yml $TEMP_DIR/etc/hello/sense_stream_fanout.yml
 - cp configs/expansions/alarm_actions.prod.yml $TEMP_DIR/etc/hello/alarm_actions.yml
+- cp configs/supichi/supichi.prod.yml $TEMP_DIR/etc/hello/supichi.yml
 - cp init/*.conf $TEMP_DIR/etc/init/
 - mvn --settings settings.xml clean test
 before_deploy:

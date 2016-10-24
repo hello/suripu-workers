@@ -13,6 +13,8 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.SSEAwsKeyManagementParams;
+import com.codahale.metrics.Meter;
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Maps;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.core.speech.interfaces.SpeechResultIngestDAO;
@@ -33,6 +35,8 @@ import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
 
+import static com.codahale.metrics.MetricRegistry.name;
+
 /**
  * Created by ksg on 8/11/16
  */
@@ -48,23 +52,48 @@ public class SupichiRecordProcessor implements IRecordProcessor {
     private final SpeechResultIngestDAO speechResultIngestDAO;
     private final Boolean logUUID;
 
+    private String shardId = "";
+    private MetricRegistry metrics;
+
+    private final Integer maxRecords;
+    private final Meter capacity;
+    private final Meter messagesProcessed;
+    private final Meter timelineSaved;
+    private final Meter resultsCreated;
+    private final Meter resultsUpdated;
+    private final Meter audioSaved;
+
+
     public SupichiRecordProcessor(
                                   final AmazonS3 s3,
                                   final String s3Bucket,
                                   final SSEAwsKeyManagementParams s3SSEKey,
                                   final SpeechTimelineIngestDAO speechTimelineIngestDAO,
                                   final SpeechResultIngestDAO speechResultIngestDAO,
-                                  final Boolean logUUID) {
+                                  final Boolean logUUID,
+                                  final Integer maxRecords,
+                                  final MetricRegistry metrics) {
         this.s3Bucket = s3Bucket;
         this.s3 = s3;
         this.s3SSEKey = s3SSEKey;
         this.speechTimelineIngestDAO = speechTimelineIngestDAO;
         this.speechResultIngestDAO = speechResultIngestDAO;
         this.logUUID = logUUID;
+
+        this.maxRecords = maxRecords;
+        this.metrics = metrics;
+
+        this.capacity = metrics.meter(name(SupichiRecordProcessor.class, "capacity"));
+        this.messagesProcessed = metrics.meter(name(SupichiRecordProcessor.class, "messages-processed"));
+        this.timelineSaved = metrics.meter(name(SupichiRecordProcessor.class, "timeline-saved"));
+        this.resultsCreated = metrics.meter(name(SupichiRecordProcessor.class, "speech-results-created"));
+        this.resultsUpdated = metrics.meter(name(SupichiRecordProcessor.class, "speech-results-updated"));
+        this.audioSaved = metrics.meter(name(SupichiRecordProcessor.class, "audio-saved"));
     }
 
     @Override
-    public void initialize(String shardId) {
+    public void initialize(final String s) {
+        this.shardId = s;
         LOGGER.debug("shard id = {}", shardId);
     }
 
@@ -82,10 +111,12 @@ public class SupichiRecordProcessor implements IRecordProcessor {
                     case PUT_ITEM:
                         // put new speech results
                         saveTranscriptionResult(speechResultsData, sequenceNumber);
+                        this.resultsCreated.mark();
                         break;
                     case UPDATE_ITEM:
                         // update speech results with commands, handlers etc.
                         updateSpeechResult(speechResultsData, sequenceNumber);
+                        this.resultsUpdated.mark();
                         break;
                     case TIMELINE:
                         if (speechResultsData.hasAudio() && speechResultsData.getAudio().getDataSize() > 0) {
@@ -93,6 +124,7 @@ public class SupichiRecordProcessor implements IRecordProcessor {
                             // save audio and speech timeline
                             saveTimeline(speechResultsData, sequenceNumber);
                             final boolean saved = saveAudio(speechResultsData, sequenceNumber);
+                            this.timelineSaved.mark();
 
                             // only log uuid in dev
                             final String uuid = (logUUID) ? speechResultsData.getAudioUuid() : MASK_UUID;
@@ -110,6 +142,9 @@ public class SupichiRecordProcessor implements IRecordProcessor {
             }
         }
 
+        this.messagesProcessed.mark(records.size());
+        this.audioSaved.mark(numAudio);
+
         LOGGER.debug("audio_saved={}", numAudio);
 
         try {
@@ -121,6 +156,9 @@ public class SupichiRecordProcessor implements IRecordProcessor {
             LOGGER.error("error=received-shutdown-command-at-checkpoint action=bailing error_msg={}", e.getMessage());
         }
 
+        final int batchCapacity = Math.round(records.size() / (float) maxRecords * 100.0f) ;
+        LOGGER.info("shard={} capacity={}%", shardId, batchCapacity);
+        capacity.mark(batchCapacity);
     }
 
     @Override

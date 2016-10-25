@@ -97,8 +97,6 @@ dynamodb:
     smart_alarm_log: http://dynamodb.us-east-1.amazonaws.com
     timezone_history: http://dynamodb.us-east-1.amazonaws.com
 
-aggregate_window_size_min: 15
-
 smart_alarm_process_ahead_in_minutes: 30
 
 keys_management_service:

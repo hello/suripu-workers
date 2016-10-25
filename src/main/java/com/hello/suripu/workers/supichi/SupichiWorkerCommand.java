@@ -143,7 +143,9 @@ public final class SupichiWorkerCommand extends WorkerEnvironmentCommand<Supichi
                 s3SSEKey,
                 speechTimelineIngestDAO,
                 speechResultIngestDAO,
-                configuration.isDebug());
+                configuration.isDebug(),
+                configuration.maxRecords(),
+                environment.metrics());
 
         final Worker worker = new Worker(processorFactory, kinesisConfig);
         worker.run();

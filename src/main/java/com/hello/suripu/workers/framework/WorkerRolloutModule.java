@@ -5,6 +5,7 @@ import com.hello.suripu.core.flipper.DynamoDBAdapter;
 import com.hello.suripu.core.processors.InsightProcessor;
 import com.hello.suripu.coredropwizard.timeline.InstrumentedTimelineProcessor;
 import com.hello.suripu.workers.alarm.AlarmRecordProcessor;
+import com.hello.suripu.workers.expansions.AlarmActionRecordProcessor;
 import com.hello.suripu.workers.fanout.SenseStreamFanout;
 import com.hello.suripu.workers.insights.AggStatsGenerator;
 import com.hello.suripu.workers.insights.InsightsGenerator;
@@ -41,7 +42,8 @@ import dagger.Provides;
         TimelineLogProcessor.class,
         SenseLastSeenProcessor.class,
         SenseStreamFanout.class,
-        SenseStructuredLogIndexer.class
+        SenseStructuredLogIndexer.class,
+        AlarmActionRecordProcessor.class
 })
 public class WorkerRolloutModule {
     private final FeatureStore featureStore;

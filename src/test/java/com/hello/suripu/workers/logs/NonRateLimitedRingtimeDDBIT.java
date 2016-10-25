@@ -1,19 +1,21 @@
 package com.hello.suripu.workers.logs;
 
+import com.google.common.base.Optional;
+import com.google.common.collect.Lists;
+
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClient;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.google.common.base.Optional;
-import com.google.common.collect.Lists;
 import com.hello.suripu.api.output.OutputProtos;
 import com.hello.suripu.core.db.RingTimeHistoryDAODynamoDB;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.models.Alarm;
 import com.hello.suripu.core.models.RingTime;
 import com.hello.suripu.core.models.UserInfo;
+
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.junit.After;
@@ -73,7 +75,7 @@ public class NonRateLimitedRingtimeDDBIT {
         final DateTime actual = expected.minusMinutes(0);
         final Long accountId = 999L;
 
-        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, false);
+        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, false, Lists.newArrayList());
         final List<UserInfo> userInfoList = createUserInfos(SENSE_ID, accountId, ringTime);
 
 
@@ -97,7 +99,7 @@ public class NonRateLimitedRingtimeDDBIT {
         final DateTime actual = expected.minusMinutes(35);
         final Long accountId = 999L;
 
-        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true);
+        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true, Lists.newArrayList());
         final List<UserInfo> userInfoList = createUserInfos(SENSE_ID, accountId, ringTime);
 
 
@@ -122,7 +124,7 @@ public class NonRateLimitedRingtimeDDBIT {
         final DateTime actual = expected.minusMinutes(35);
         final Long accountId = 999L;
 
-        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true);
+        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true, Lists.newArrayList());
         final List<UserInfo> userInfoList = createUserInfos(SENSE_ID, accountId, ringTime);
 
 
@@ -146,7 +148,7 @@ public class NonRateLimitedRingtimeDDBIT {
         final DateTime actual = expected.minusMinutes(35);
         final Long accountId = 999L;
         final Long wrongAccountId = 888L;
-        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true);
+        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true, Lists.newArrayList());
         final List<UserInfo> userInfoList = createUserInfos(SENSE_ID, accountId, ringTime);
 
         ringTimeHistoryDAODynamoDB.setNextRingTime(SENSE_ID, userInfoList, ringTime);
@@ -169,7 +171,7 @@ public class NonRateLimitedRingtimeDDBIT {
         final DateTime actual = expected.minusMinutes(35);
         final Long accountId = 999L;
         final Long wrongAccountId = 888L;
-        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true);
+        final RingTime ringTime = new RingTime(actual.getMillis(), expected.getMillis(), 1, true, Lists.newArrayList());
         final List<UserInfo> userInfoList = createUserInfos(SENSE_ID, accountId, ringTime);
 
 

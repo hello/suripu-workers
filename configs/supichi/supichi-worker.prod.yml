@@ -12,12 +12,18 @@ graphite:
 logging:
   level: INFO
   loggers:
-    com.hello: DEBUG
+    com.hello.suripu.workers: DEBUG
     is.hello: DEBUG
-    com.amazonaws: INFO
   appenders:
-    - type: console
-      threshold: DEBUG
+    - type: file
+      threshold: INFO
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-supichi.log
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-supichi-%d{yyyy-MM-dd}.log.gz
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-supichi-prod
 
 dynamodb:
   region: us-east-1

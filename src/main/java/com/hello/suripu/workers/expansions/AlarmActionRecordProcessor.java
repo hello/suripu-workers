@@ -67,7 +67,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
     private static final String GENERIC_EXCEPTION_LOG_MESSAGE = "error=jedis-connection-exception";
     private static final String ALARM_ACTION_ATTEMPTS_KEY = "alarm_actions";
     private static final Integer MAX_ALARM_ACTION_AGE_MINUTES = 30;
-    private static final Integer MAX_REDIS_RECORD_AGE_MINUTES = 10;
+    private static final Integer MAX_REDIS_RECORD_AGE_MINUTES = 24 * 60;
 
     private ObjectMapper mapper = new ObjectMapper();
 

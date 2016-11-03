@@ -113,17 +113,11 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
             try {
                 final ExpansionProtos.AlarmAction pb = ExpansionProtos.AlarmAction.parseFrom(record.getData().array());
 
-                if(!pb.hasDeviceId() || pb.getDeviceId().isEmpty()) {
-                    LOGGER.warn("warn=action-deviceId-missing");
+                if(!shouldAttemptAction(pb, expansionStore, allRecentActions, DateTime.now(DateTimeZone.UTC).getMillis())) {
                     continue;
                 }
+
                 final String senseId = pb.getDeviceId();
-
-                if(!pb.hasServiceType() || !pb.hasExpectedRingtimeUtc()) {
-                    LOGGER.warn("warn=invalid-protobuf sense_id={}", senseId);
-                    continue;
-                }
-
                 final ExpansionProtos.ServiceType serviceType = pb.getServiceType();
 
                 final Optional<Expansion> expansionOptional = expansionStore.getApplicationByName(serviceType.name());
@@ -133,31 +127,11 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                 }
 
                 final Expansion expansion = expansionOptional.get();
-                final Integer bufferTimeSeconds = HomeAutomationExpansionFactory.getBufferTimeByServiceName(expansion.serviceName);
-
-                //Check against expansion default action buffer time
-                final long secondsTillRing = (pb.getExpectedRingtimeUtc() - DateTime.now(DateTimeZone.UTC).getMillis()) / 1000;
-                if(secondsTillRing < 0) {
-                    LOGGER.error("error=action-past-ringtime sense_id={} expansion_id={}", senseId, expansion.id);
-                    continue;
-                }
-
-                if(secondsTillRing > bufferTimeSeconds) {
-                    continue;
-                }
-
                 final ValueRange actionValueRange = new ValueRange(pb.getTargetValueMin(), pb.getTargetValueMax());
                 final AlarmExpansion alarmExpansion = new AlarmExpansion(expansion.id, true, expansion.category.toString(), expansion.serviceName.toString(), actionValueRange);
                 final ExpansionAlarmAction expansionAction = new ExpansionAlarmAction(senseId, alarmExpansion, pb.getExpectedRingtimeUtc());
 
-                if(allRecentActions.containsKey(expansionAction.getExpansionActionKey())){
-                    //This action has already been executed
-                    LOGGER.info("action=action-already-executed sense_id={} expansion_id={} expected_ringtime={}", senseId, expansion.id, pb.getExpectedRingtimeUtc());
-                    continue;
-                }
-
                 actionsToBeExecutedThisBatch.add(expansionAction);
-
             } catch (InvalidProtocolBufferException e) {
                 LOGGER.error("error=protobuf-decode-failure message={}", e.getMessage());
             }
@@ -195,6 +169,53 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         } catch (ShutdownException e) {
             LOGGER.error("Received shutdown command at checkpoint, bailing. {}", e.getMessage());
         }
+    }
+
+    public static Boolean shouldAttemptAction(final ExpansionProtos.AlarmAction protoBuf, final ExpansionStore<Expansion> expansionStore, final Map<String, Long> allRecentActions, final Long nowMillis) {
+        if(!protoBuf.hasDeviceId() || protoBuf.getDeviceId().isEmpty()) {
+            LOGGER.warn("warn=action-deviceId-missing");
+            return false;
+        }
+        final String senseId = protoBuf.getDeviceId();
+
+        if(!protoBuf.hasServiceType() || !protoBuf.hasExpectedRingtimeUtc()) {
+            LOGGER.warn("warn=invalid-protobuf sense_id={}", senseId);
+            return false;
+        }
+
+        final ExpansionProtos.ServiceType serviceType = protoBuf.getServiceType();
+
+        final Optional<Expansion> expansionOptional = expansionStore.getApplicationByName(serviceType.name());
+        if(!expansionOptional.isPresent()) {
+            LOGGER.warn("warning=expansion-not-found");
+            return false;
+        }
+
+        final Expansion expansion = expansionOptional.get();
+        final Integer bufferTimeSeconds = HomeAutomationExpansionFactory.getBufferTimeByServiceName(expansion.serviceName);
+
+        //Check against expansion default action buffer time
+        final long secondsTillRing = (protoBuf.getExpectedRingtimeUtc() - nowMillis) / 1000;
+        if(secondsTillRing < 0) {
+            LOGGER.error("error=action-past-ringtime sense_id={} expansion_id={}", senseId, expansion.id);
+            return false;
+        }
+
+        if(secondsTillRing > bufferTimeSeconds) {
+            return false;
+        }
+
+        final ValueRange actionValueRange = new ValueRange(protoBuf.getTargetValueMin(), protoBuf.getTargetValueMax());
+        final AlarmExpansion alarmExpansion = new AlarmExpansion(expansion.id, true, expansion.category.toString(), expansion.serviceName.toString(), actionValueRange);
+        final ExpansionAlarmAction expansionAction = new ExpansionAlarmAction(senseId, alarmExpansion, protoBuf.getExpectedRingtimeUtc());
+
+        if(allRecentActions.containsKey(expansionAction.getExpansionActionKey())){
+            //This action has already been executed
+            LOGGER.info("action=action-already-executed sense_id={} expansion_id={} expected_ringtime={}", senseId, expansion.id, protoBuf.getExpectedRingtimeUtc());
+            return false;
+        }
+
+        return true;
     }
 
     public Boolean attemptAlarmAction(final String deviceId, final Long expansionId, final ValueRange actionValues) {

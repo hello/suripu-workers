@@ -17,7 +17,7 @@ import redis.clients.jedis.exceptions.JedisDataException;
 /**
  * Created by jnorgan on 11/3/16.
  */
-public class AlarmActionCheckPointerRedis {
+public class AlarmActionCheckPointerRedis implements AlarmActionCheckPointer{
 
   private final static Logger LOGGER = LoggerFactory.getLogger(AlarmActionCheckPointerRedis.class);
 

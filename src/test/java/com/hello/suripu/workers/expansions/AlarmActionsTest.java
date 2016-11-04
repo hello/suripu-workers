@@ -3,23 +3,20 @@ package com.hello.suripu.workers.expansions;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.Maps;
-
 import com.hello.suripu.api.expansions.ExpansionProtos;
 import com.hello.suripu.core.models.AlarmExpansion;
 import com.hello.suripu.core.models.ValueRange;
-
+import is.hello.gaibu.core.models.Expansion;
+import is.hello.gaibu.core.models.MultiDensityImage;
+import is.hello.gaibu.core.stores.ExpansionStore;
+import is.hello.gaibu.homeauto.clients.HueLight;
+import is.hello.gaibu.homeauto.clients.NestThermostat;
 import org.joda.time.DateTime;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.util.Map;
-
-import is.hello.gaibu.core.models.Expansion;
-import is.hello.gaibu.core.models.MultiDensityImage;
-import is.hello.gaibu.core.stores.ExpansionStore;
-import is.hello.gaibu.homeauto.clients.HueLight;
-import is.hello.gaibu.homeauto.clients.NestThermostat;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -94,23 +91,23 @@ public class AlarmActionsTest {
             .build();
 
         //Normal execution
-        assertEquals(true, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
+        assertEquals(ExpansionAttemptStatus.OK, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
         //Normal execution before ring time
-        assertEquals(true, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, beforeExpectedRingTime));
+        assertEquals(ExpansionAttemptStatus.OK, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, beforeExpectedRingTime));
         //Normal execution after ring time
-        assertEquals(false, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, afterExpectedRingTime));
+        assertEquals(ExpansionAttemptStatus.PAST_RINGTIME, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, afterExpectedRingTime));
         //Normal execution too far before ring time
-        assertEquals(false, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, tooFarBeforeExpectedRingTime));
+        assertEquals(ExpansionAttemptStatus.EXCEEDS_BUFFER_TIME, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsNotAlreadyExecuted, tooFarBeforeExpectedRingTime));
 
         //Already executed
-        assertEquals(false, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsAlreadyExecuted, expectedRingTime));
+        assertEquals(ExpansionAttemptStatus.ALREADY_EXECUTED, AlarmActionRecordProcessor.shouldAttemptAction(pb, expansionStore, recentActionsAlreadyExecuted, expectedRingTime));
 
         //Protobuf with no Device ID
-        assertEquals(false, AlarmActionRecordProcessor.shouldAttemptAction(pbNoDevice, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
+        assertEquals(ExpansionAttemptStatus.DEVICE_ID_MISSING, AlarmActionRecordProcessor.shouldAttemptAction(pbNoDevice, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
         //Protobuf with no ServiceType
-        assertEquals(false, AlarmActionRecordProcessor.shouldAttemptAction(pbNoService, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
+        assertEquals(ExpansionAttemptStatus.INVALID_PROTOBUF, AlarmActionRecordProcessor.shouldAttemptAction(pbNoService, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
         //Protobuf with no RingTime
-        assertEquals(false, AlarmActionRecordProcessor.shouldAttemptAction(pbNoRingTime, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
+        assertEquals(ExpansionAttemptStatus.INVALID_PROTOBUF, AlarmActionRecordProcessor.shouldAttemptAction(pbNoRingTime, expansionStore, recentActionsNotAlreadyExecuted, expectedRingTime));
 
 
     }

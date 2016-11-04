@@ -17,16 +17,16 @@ import redis.clients.jedis.exceptions.JedisDataException;
 /**
  * Created by jnorgan on 11/3/16.
  */
-public class AlarmActionCheckpointerRedis {
+public class AlarmActionCheckPointerRedis {
 
-  private final static Logger LOGGER = LoggerFactory.getLogger(AlarmActionCheckpointerRedis.class);
+  private final static Logger LOGGER = LoggerFactory.getLogger(AlarmActionCheckPointerRedis.class);
 
   private final JedisPool jedisPool;
 
   private static final String GENERIC_EXCEPTION_LOG_MESSAGE = "error=jedis-connection-exception";
   private static final String ALARM_ACTION_ATTEMPTS_KEY = "alarm_actions";
 
-  public AlarmActionCheckpointerRedis(final JedisPool jedisPool){
+  public AlarmActionCheckPointerRedis(final JedisPool jedisPool){
     this.jedisPool = jedisPool;
   }
 

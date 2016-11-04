@@ -1,7 +1,6 @@
 package com.hello.suripu.workers.expansions;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -41,11 +40,7 @@ import is.hello.gaibu.core.utils.TokenUtils;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionDataFactory;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionFactory;
 import is.hello.gaibu.homeauto.interfaces.HomeAutomationExpansion;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.Pipeline;
-import redis.clients.jedis.Tuple;
-import redis.clients.jedis.exceptions.JedisDataException;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
@@ -59,13 +54,12 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
     private final ExternalOAuthTokenStore<ExternalToken> externalTokenStore;
     private final PersistentExpansionDataStore expansionDataStore;
     private final Vault tokenKMSVault;
-    private final JedisPool jedisPool;
+    private final AlarmActionCheckPointerRedis checkPointer;
 
     private final MetricRegistry metrics;
     private final Meter actionsExecuted;
 
-    private static final String GENERIC_EXCEPTION_LOG_MESSAGE = "error=jedis-connection-exception";
-    private static final String ALARM_ACTION_ATTEMPTS_KEY = "alarm_actions";
+
     private static final Integer MAX_ALARM_ACTION_AGE_MINUTES = 30;
     private static final Integer MAX_REDIS_RECORD_AGE_MINUTES = 24 * 60;
 
@@ -89,9 +83,10 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         this.externalTokenStore = externalTokenStore;
         this.expansionDataStore = expansionDataStore;
         this.tokenKMSVault = tokenKMSVault;
-        this.jedisPool = jedisPool;
 
         this.actionsExecuted = metrics.meter(name(AlarmActionRecordProcessor.class, "actions-executed"));
+
+        checkPointer = new AlarmActionCheckPointerRedis(jedisPool);
     }
 
     @Override
@@ -107,7 +102,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         final Set<ExpansionAlarmAction> actionsToBeExecutedThisBatch = Sets.newHashSet();
 
-        final Map<String, Long> allRecentActions = getAllRecentActions(DateTime.now(DateTimeZone.UTC).minusMinutes(MAX_ALARM_ACTION_AGE_MINUTES).getMillis());
+        final Map<String, Long> allRecentActions = checkPointer.getAllRecentActions(DateTime.now(DateTimeZone.UTC).minusMinutes(MAX_ALARM_ACTION_AGE_MINUTES).getMillis());
 
         for (final Record record : records) {
             try {
@@ -139,7 +134,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         Boolean didRecordActions = false;
         if(!actionsToBeExecutedThisBatch.isEmpty()) {
-            didRecordActions = recordAlarmActions(actionsToBeExecutedThisBatch);
+            didRecordActions = checkPointer.recordAlarmActions(actionsToBeExecutedThisBatch);
         }
 
         //All actions must be recorded to Redis before attempting all actions
@@ -156,7 +151,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         //Attempt cleanup
         if(successfulActions > 0) {
-            final Long removedRecords = removeOldActions(DateTime.now(DateTimeZone.UTC).minusMinutes(MAX_REDIS_RECORD_AGE_MINUTES).getMillis());
+            final Long removedRecords = checkPointer.removeOldActions(DateTime.now(DateTimeZone.UTC).minusMinutes(MAX_REDIS_RECORD_AGE_MINUTES).getMillis());
             if (removedRecords > 0L) {
                 LOGGER.info("info=removed-redis-records record_count={}", removedRecords);
             }
@@ -270,90 +265,6 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         return isSuccessful;
     }
 
-    public Boolean recordAlarmActions(final Set<ExpansionAlarmAction> executedActions) {
-        Jedis jedis = null;
-
-        try {
-            jedis = jedisPool.getResource();
-            final Pipeline pipe = jedis.pipelined();
-            pipe.multi();
-            for(final ExpansionAlarmAction expAction : executedActions) {
-                pipe.zadd(ALARM_ACTION_ATTEMPTS_KEY, expAction.expectedRingTime, expAction.getExpansionActionKey());
-            }
-            pipe.exec();
-        }catch (JedisDataException exception) {
-            LOGGER.error("error=jedis-data-exception message={}", exception.getMessage());
-            jedisPool.returnBrokenResource(jedis);
-            return false;
-        } catch(Exception exception) {
-            LOGGER.error("error=redis-unknown-failure message={}", exception.getMessage());
-            jedisPool.returnBrokenResource(jedis);
-            return false;
-        }
-        finally {
-            try{
-                jedisPool.returnResource(jedis);
-            }catch (Exception e) {
-                LOGGER.error(GENERIC_EXCEPTION_LOG_MESSAGE + " message={}", e.getMessage());
-            }
-        }
-        LOGGER.debug("action=alarm_actions_recorded action_count={}", executedActions.size());
-        return true;
-    }
-
-    public Map<String, Long> getAllRecentActions(final Long oldestEventMillis) {
-        final Map<String, Long> hashRingTimeMap = Maps.newHashMap();
-        Jedis jedis = null;
-
-        try {
-            jedis = jedisPool.getResource();
-            //Get all elements in the index range provided (score greater than oldest event millis)
-            final Set<Tuple> allRecentAlarmActions = jedis.zrevrangeByScoreWithScores(ALARM_ACTION_ATTEMPTS_KEY, Double.MAX_VALUE, oldestEventMillis);
-
-            for (final Tuple attempt:allRecentAlarmActions) {
-                final String deviceHash = attempt.getElement();
-                final long expectedRingTime = (long) attempt.getScore();
-                hashRingTimeMap.put(deviceHash, expectedRingTime);
-            }
-        } catch (JedisDataException exception) {
-            LOGGER.error("error=jedis-data-exception message={}", exception.getMessage());
-            jedisPool.returnBrokenResource(jedis);
-        } catch (Exception exception) {
-            LOGGER.error("error=redis-unknown-failure message={}", exception.getMessage());
-            jedisPool.returnBrokenResource(jedis);
-        } finally {
-            try {
-                jedisPool.returnResource(jedis);
-            } catch (Exception e) {
-                LOGGER.error(GENERIC_EXCEPTION_LOG_MESSAGE + " message={}", e.getMessage());
-            }
-        }
-        return hashRingTimeMap;
-    }
-
-    public Long removeOldActions(final Long oldestEventMillis) {
-        final Map<String, Long> hashRingTimeMap = Maps.newHashMap();
-        Jedis jedis = null;
-
-        try {
-            jedis = jedisPool.getResource();
-            //Get all elements in the index range provided (score greater than oldest event millis)
-            return jedis.zremrangeByScore(ALARM_ACTION_ATTEMPTS_KEY, -1L, oldestEventMillis);
-        } catch (JedisDataException exception) {
-            LOGGER.error("error=jedis-data-exception message={}", exception.getMessage());
-            jedisPool.returnBrokenResource(jedis);
-        } catch (Exception exception) {
-            LOGGER.error("error=redis-unknown-failure message={}", exception.getMessage());
-            jedisPool.returnBrokenResource(jedis);
-        } finally {
-            try {
-                jedisPool.returnResource(jedis);
-            } catch (Exception e) {
-                LOGGER.error(GENERIC_EXCEPTION_LOG_MESSAGE + " message={}", e.getMessage());
-            }
-        }
-        return 0L;
-    }
 
     @Override
     public void shutdown(final IRecordProcessorCheckpointer iRecordProcessorCheckpointer, final ShutdownReason shutdownReason) {

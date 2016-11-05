@@ -145,6 +145,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
             for(final ExpansionAlarmAction expAction : actionsToBeExecutedThisBatch) {
                 final Boolean actionComplete = attemptAlarmAction(expAction.senseId, expAction.alarmExpansion.id, expAction.alarmExpansion.targetValue);
                 if(actionComplete) {
+                    LOGGER.info("action=success sense_id={} expansion={}", expAction.senseId, expAction.alarmExpansion.serviceName);
                     successfulActions++;
                 }
             }

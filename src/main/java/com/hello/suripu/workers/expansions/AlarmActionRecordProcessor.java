@@ -249,6 +249,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         final Optional<String> decryptedTokenOptional = TokenUtils.getDecryptedExternalToken(externalTokenStore, tokenKMSVault, deviceId, expansion, false);
 
         if(!decryptedTokenOptional.isPresent()) {
+            LOGGER.error("error=missing-decrypted-token sense_id={} expansion_id={}", deviceId, expansion.id);
             return false;
         }
         final String decryptedToken = decryptedTokenOptional.get();

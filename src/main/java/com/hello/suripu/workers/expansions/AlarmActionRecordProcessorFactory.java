@@ -3,8 +3,11 @@ package com.hello.suripu.workers.expansions;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.codahale.metrics.MetricRegistry;
+import com.hello.suripu.core.alerts.AlertsDAO;
+import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
+import com.hello.suripu.core.db.TimeZoneHistoryDAO;
 import com.hello.suripu.core.speech.interfaces.Vault;
 
 import is.hello.gaibu.core.models.Expansion;
@@ -28,7 +31,7 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
     private final PersistentExpansionDataStore expansionDataStore;
     private final Vault tokenKMSVault;
     private final JedisPool jedisPool;
-
+    private final Alerter alerter;
 
     public AlarmActionRecordProcessorFactory(
             final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
@@ -39,7 +42,10 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
             final ExternalOAuthTokenStore<ExternalToken> externalTokenStore,
             final PersistentExpansionDataStore expansionDataStore,
             final Vault tokenKMSVault,
-            final JedisPool jedisPool) {
+            final JedisPool jedisPool,
+            final DeviceDAO deviceDAO,
+            final AlertsDAO alertsDAO,
+            final TimeZoneHistoryDAO timeZoneHistoryDAO) {
 
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.scheduledRingTimeHistoryDAODynamoDB = scheduledRingTimeHistoryDAODynamoDB;
@@ -50,6 +56,7 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
         this.expansionDataStore = expansionDataStore;
         this.tokenKMSVault = tokenKMSVault;
         this.jedisPool = jedisPool;
+        this.alerter = new AlarmActionAlerter(deviceDAO, alertsDAO, timeZoneHistoryDAO);
     }
 
 
@@ -63,7 +70,8 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
                 this.externalTokenStore,
                 this.expansionDataStore,
                 this.tokenKMSVault,
-                this.jedisPool
+                this.jedisPool,
+                this.alerter
             );
     }
 }

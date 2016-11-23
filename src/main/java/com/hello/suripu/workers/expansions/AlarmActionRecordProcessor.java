@@ -29,6 +29,7 @@ import is.hello.gaibu.core.utils.TokenUtils;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionDataFactory;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionFactory;
 import is.hello.gaibu.homeauto.interfaces.HomeAutomationExpansion;
+import is.hello.gaibu.homeauto.models.AlarmActionStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -52,6 +53,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
     private final PersistentExpansionDataStore expansionDataStore;
     private final Vault tokenKMSVault;
     private final AlarmActionCheckPointerRedis checkPointer;
+    private final Alerter alerter;
 
     private final MetricRegistry metrics;
     private final Meter actionsExecuted;
@@ -70,7 +72,8 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
                                       final ExternalOAuthTokenStore<ExternalToken> externalTokenStore,
                                       final PersistentExpansionDataStore expansionDataStore,
                                       final Vault tokenKMSVault,
-                                      final JedisPool jedisPool){
+                                      final JedisPool jedisPool,
+                                      final Alerter alerter){
 
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
         this.scheduledRingTimeHistoryDAODynamoDB = scheduledRingTimeHistoryDAODynamoDB;
@@ -80,6 +83,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         this.externalTokenStore = externalTokenStore;
         this.expansionDataStore = expansionDataStore;
         this.tokenKMSVault = tokenKMSVault;
+        this.alerter = alerter;
 
         this.actionsExecuted = metrics.meter(name(AlarmActionRecordProcessor.class, "actions-executed"));
 
@@ -221,7 +225,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         final Optional<Expansion> expansionOptional = expansionStore.getApplicationById(expansionId);
         if(!expansionOptional.isPresent()) {
-            LOGGER.warn("warn=expansion-not-found");
+            LOGGER.warn("warn=expansion-not-found sense_id={}", deviceId);
             return false;
         }
 
@@ -261,13 +265,17 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
         }
 
         final HomeAutomationExpansion homeExpansion = homeExpansionOptional.get();
-        final Boolean isSuccessful = homeExpansion.runAlarmAction(actionValues);
+        final AlarmActionStatus status = homeExpansion.runAlarmAction(actionValues);
 
-        if(!isSuccessful){
-            LOGGER.error("error=alarm-action-failed sense_id={} expansion_id={}", deviceId, expansion.id);
+        if(!AlarmActionStatus.OK.equals(status)){
+            LOGGER.error("error=alarm-action-failed alarm_action_status={} sense_id={} expansion_id={}", status, deviceId, expansion.id);
+            if(AlarmActionStatus.OFF_OR_LOCKED.equals(status)) {
+                alerter.alert(deviceId, status);
+            }
+            return false;
         }
 
-        return isSuccessful;
+        return true;
     }
 
 

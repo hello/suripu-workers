@@ -54,7 +54,7 @@ public class AlarmActionAlerter implements Alerter {
         }
 
         final DateTime localTime = new DateTime(referenceTime.getMillis(), DateTimeZone.forID(timeZoneHistoryOptional.get().timeZoneId));
-        return String.format(" at %s", localTime.toString(DateTimeFormat.forPattern("HH:mma")));
+        return String.format(" at %s", localTime.toString(DateTimeFormat.forPattern("h:mm a")));
     }
 
     @Override

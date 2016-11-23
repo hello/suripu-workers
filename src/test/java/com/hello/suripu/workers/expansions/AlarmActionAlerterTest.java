@@ -36,9 +36,9 @@ public class AlarmActionAlerterTest {
         final Long accountId = 1L;
 
         final Map<String, String> map = Maps.newHashMap();
-        map.put("America/Los_Angeles", " at 16:02PM");
-        map.put("Europe/London", " at 00:02AM");
-        map.put("Europe/Berlin", " at 01:02AM");
+        map.put("America/Los_Angeles", " at 4:02 PM");
+        map.put("Europe/London", " at 12:02 AM");
+        map.put("Europe/Berlin", " at 1:02 AM");
         map.put(null, ""); // missing timezone history
 
         for(final String key : map.keySet()) {

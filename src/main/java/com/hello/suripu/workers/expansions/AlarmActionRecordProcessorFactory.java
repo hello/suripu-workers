@@ -8,7 +8,6 @@ import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
 import com.hello.suripu.core.db.TimeZoneHistoryDAO;
-import com.hello.suripu.core.speech.interfaces.Vault;
 
 import is.hello.gaibu.core.models.Expansion;
 import is.hello.gaibu.core.models.ExternalToken;
@@ -29,7 +28,6 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
     private final ExpansionStore<Expansion> expansionStore;
     private final ExternalOAuthTokenStore<ExternalToken> externalTokenStore;
     private final PersistentExpansionDataStore expansionDataStore;
-    private final Vault tokenKMSVault;
     private final JedisPool jedisPool;
     private final Alerter alerter;
 
@@ -41,7 +39,6 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
             final ExpansionStore<Expansion> expansionStore,
             final ExternalOAuthTokenStore<ExternalToken> externalTokenStore,
             final PersistentExpansionDataStore expansionDataStore,
-            final Vault tokenKMSVault,
             final JedisPool jedisPool,
             final DeviceDAO deviceDAO,
             final AlertsDAO alertsDAO,
@@ -54,7 +51,6 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
         this.expansionStore = expansionStore;
         this.externalTokenStore = externalTokenStore;
         this.expansionDataStore = expansionDataStore;
-        this.tokenKMSVault = tokenKMSVault;
         this.jedisPool = jedisPool;
         this.alerter = new AlarmActionAlerter(deviceDAO, alertsDAO, timeZoneHistoryDAO);
     }
@@ -69,7 +65,6 @@ public class AlarmActionRecordProcessorFactory implements IRecordProcessorFactor
                 this.expansionStore,
                 this.externalTokenStore,
                 this.expansionDataStore,
-                this.tokenKMSVault,
                 this.jedisPool,
                 this.alerter
             );

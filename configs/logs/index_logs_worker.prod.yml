@@ -8,7 +8,7 @@ graphite:
     - io.dropwizard
     - com.hello
 
-max_records: 50
+max_records: 500
 
 kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com

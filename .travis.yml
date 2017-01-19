@@ -58,11 +58,10 @@ deploy:
   region: us-east-1
   on:
     tags: false
-    branch: PRODUCTION
+    branch: master
 branches:
   only:
   - master
-  - PRODUCTION
 notifications:
   email:
   - josef+travis-suripu@sayhello.com

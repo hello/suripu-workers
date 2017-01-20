@@ -14,6 +14,7 @@ import com.hello.suripu.core.db.MarketingInsightsSeenDAODynamoDB;
 import com.hello.suripu.core.db.QuestionResponseReadDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.TrendsInsightsDAO;
+import com.hello.suripu.core.db.colors.SenseColorDAO;
 import com.hello.suripu.core.insights.InsightsLastSeenDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDAO;
 import com.hello.suripu.core.processors.AccountInfoProcessor;
@@ -28,6 +29,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
     private final AccountReadDAO accountDAO;
     private final DeviceDataDAODynamoDB deviceDataDAODynamoDB;
     private final DeviceReadDAO deviceDAO;
+    private final SenseColorDAO senseColorDAO;
     private final AggregateSleepScoreDAODynamoDB scoreDAODynamoDB;
     private final InsightsDAODynamoDB insightsDAODynamoDB;
     private final InsightsLastSeenDAO insightsLastSeenDAO;
@@ -43,6 +45,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
     public InsightsGeneratorFactory(final AccountDAO accountDAO,
                                     final DeviceDataDAODynamoDB deviceDataDAODynamoDB,
                                     final DeviceDAO deviceDAO,
+                                    final SenseColorDAO senseColorDAO,
                                     final AggregateSleepScoreDAODynamoDB scoreDAODynamoDB,
                                     final InsightsDAODynamoDB insightsDAODynamoDB,
                                     final InsightsLastSeenDAO insightsLastSeenDAO,
@@ -57,6 +60,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
         this.accountDAO = accountDAO;
         this.deviceDataDAODynamoDB = deviceDataDAODynamoDB;
         this.deviceDAO = deviceDAO;
+        this.senseColorDAO = senseColorDAO;
         this.scoreDAODynamoDB = scoreDAODynamoDB;
         this.insightsDAODynamoDB = insightsDAODynamoDB;
         this.insightsLastSeenDAO = insightsLastSeenDAO;
@@ -79,6 +83,7 @@ public class InsightsGeneratorFactory implements IRecordProcessorFactory {
 
         final InsightProcessor.Builder insightBuilder = new InsightProcessor.Builder()
                 .withSenseDAOs(deviceDataDAODynamoDB, deviceDAO)
+                .withSenseColorDAO(senseColorDAO)
                 .withInsightsDAO(trendsInsightsDAO)
                 .withDynamoDBDAOs(scoreDAODynamoDB, insightsDAODynamoDB, insightsLastSeenDAO, sleepStatsDAODynamoDB)
                 .withAccountReadDAO(accountDAO)

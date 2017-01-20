@@ -25,10 +25,14 @@ import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.DeviceDataDAODynamoDB;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.InsightsDAODynamoDB;
+import com.hello.suripu.core.db.KeyStore;
+import com.hello.suripu.core.db.KeyStoreDynamoDB;
 import com.hello.suripu.core.db.MarketingInsightsSeenDAODynamoDB;
 import com.hello.suripu.core.db.QuestionResponseReadDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.core.db.TrendsInsightsDAO;
+import com.hello.suripu.core.db.colors.SenseColorDAO;
+import com.hello.suripu.core.db.colors.SenseColorDynamoDBDAO;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.insights.InsightsLastSeenDAO;
 import com.hello.suripu.core.insights.InsightsLastSeenDynamoDB;
@@ -36,6 +40,8 @@ import com.hello.suripu.core.preferences.AccountPreferencesDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
 import com.hello.suripu.core.processors.insights.LightData;
 import com.hello.suripu.core.processors.insights.WakeStdDevData;
+import com.hello.suripu.core.sense.metadata.MetadataDAODynamoDB;
+import com.hello.suripu.core.sense.metadata.SenseMetadataDAO;
 import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.coredropwizard.metrics.RegexMetricFilter;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
@@ -178,6 +184,17 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
                 tableNames.get(DynamoDBTableName.CALIBRATION)
         );
 
+        final AmazonDynamoDB senseKeyStoreDynamoDBClient = amazonDynamoDBClientFactory.getForTable(DynamoDBTableName.SENSE_KEY_STORE);
+        final KeyStore senseKeyStore = new KeyStoreDynamoDB(
+                senseKeyStoreDynamoDBClient,
+                tableNames.get(DynamoDBTableName.SENSE_KEY_STORE),
+                "1234567891234567".getBytes(), // TODO: REMOVE THIS WHEN WE ARE NOT SUPPOSED TO HAVE A DEFAULT KEY
+                120 // 2 minutes for cache
+        );
+
+        final SenseMetadataDAO senseMetadataDAO = MetadataDAODynamoDB.create(senseKeyStore);
+        final SenseColorDAO senseColorDAO = new SenseColorDynamoDBDAO(senseMetadataDAO);
+
         final AmazonDynamoDB deviceDataDAODynamoDBClient = amazonDynamoDBClientFactory.getInstrumented(DynamoDBTableName.DEVICE_DATA, DeviceDataDAODynamoDB.class);
         final DeviceDataDAODynamoDB deviceDataDAODynamoDB = new DeviceDataDAODynamoDB(deviceDataDAODynamoDBClient, tableNames.get(DynamoDBTableName.DEVICE_DATA));
 
@@ -195,6 +212,7 @@ public class InsightsGeneratorWorkerCommand extends WorkerEnvironmentCommand<Ins
                 accountDAO,
                 deviceDataDAODynamoDB,
                 deviceDAO,
+                senseColorDAO,
                 aggregateSleepScoreDAODynamoDB,
                 insightsDAODynamoDB,
                 insightsLastSeenDAO,

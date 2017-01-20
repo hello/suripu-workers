@@ -117,7 +117,8 @@ dynamo_db:
       features : features
       calibration : prod_calibration
       insights : prod_insights
-      insights_last_seen: prod_insights_last_seen
+      insights_last_seen : prod_insights_last_seen
+      sense_key_store : prod_key_store
       sleep_stats : prod_sleep_stats
       preferences : prod_preferences
       sleep_score : prod_sleep_score
@@ -127,9 +128,10 @@ dynamo_db:
 
   endpoints:
       features : http://dynamodb.us-east-1.amazonaws.com
-      calibration: http://dynamodb.us-east-1.amazonaws.com
-      insights: http://dynamodb.us-east-1.amazonaws.com
-      insights_last_seen: http://dynamodb.us-east-1.amazonaws.com
+      calibration : http://dynamodb.us-east-1.amazonaws.com
+      insights : http://dynamodb.us-east-1.amazonaws.com
+      insights_last_seen : http://dynamodb.us-east-1.amazonaws.com
+      sense_key_store : http://dynamodb.us-east-1.amazonaws.com
       sleep_stats : http://dynamodb.us-east-1.amazonaws.com
       preferences : http://dynamodb.us-east-1.amazonaws.com
       sleep_score : http://dynamodb.us-east-1.amazonaws.com

@@ -118,7 +118,7 @@ dynamo_db:
       calibration : prod_calibration
       insights : prod_insights
       insights_last_seen : prod_insights_last_seen
-      sense_key_store : prod_key_store
+      sense_key_store : key_store
       sleep_stats : prod_sleep_stats
       preferences : prod_preferences
       sleep_score : prod_sleep_score

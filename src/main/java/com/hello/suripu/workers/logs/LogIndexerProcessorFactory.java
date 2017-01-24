@@ -10,6 +10,7 @@ import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
+import com.hello.suripu.core.db.SenseEventsDynamoDB;
 import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.segment.analytics.Analytics;
 
@@ -43,7 +44,7 @@ public class LogIndexerProcessorFactory implements IRecordProcessorFactory {
     public IRecordProcessor createProcessor() {
         final AmazonDynamoDB senseEventsDBClient = amazonDynamoDBClientFactory.getInstrumented(DynamoDBTableName.SENSE_EVENTS, SenseEventsDAO.class);
         final ImmutableMap<DynamoDBTableName, String> tableNames = this.config.dynamoDBConfiguration().tables();
-        final SenseEventsDAO senseEventsDAO = new SenseEventsDAO(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
+        final SenseEventsDAO senseEventsDAO = new SenseEventsDynamoDB(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
 
         return LogIndexerProcessor.create(
                 senseEventsDAO,

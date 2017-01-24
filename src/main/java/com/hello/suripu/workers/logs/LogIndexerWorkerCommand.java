@@ -26,6 +26,7 @@ import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.RingTimeHistoryDAODynamoDB;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
+import com.hello.suripu.core.db.SenseEventsDynamoDB;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.coredropwizard.metrics.RegexMetricFilter;
@@ -65,7 +66,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfig, configuration.dynamoDBConfiguration());
 
         final AmazonDynamoDB senseEventsDBClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.SENSE_EVENTS, SenseEventsDAO.class);
-        final SenseEventsDAO senseEventsDAO = new SenseEventsDAO(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
+        final SenseEventsDAO senseEventsDAO = new SenseEventsDynamoDB(senseEventsDBClient, tableNames.get(DynamoDBTableName.SENSE_EVENTS));
 
         final AmazonDynamoDB ringtimeHistoryClient = dynamoDBClientFactory.getInstrumented(DynamoDBTableName.RING_TIME_HISTORY, RingTimeHistoryDAODynamoDB.class);
 
@@ -180,7 +181,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
             senseEventsDBClient.describeTable(tableName);
             LOGGER.info("{} already exists.", tableName);
         } catch (AmazonServiceException exception) {
-            final CreateTableResult result = SenseEventsDAO.createTable(tableName, senseEventsDBClient);
+            final CreateTableResult result = SenseEventsDynamoDB.createTable(tableName, senseEventsDBClient);
             final TableDescription description = result.getTableDescription();
             LOGGER.info("{}: {}", tableName, description.getTableStatus());
         }

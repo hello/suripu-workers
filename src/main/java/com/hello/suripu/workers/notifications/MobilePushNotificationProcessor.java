@@ -21,15 +21,30 @@ class MobilePushNotificationProcessor {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(MobilePushNotificationProcessor.class);
 
+    final ObjectMapper mapper;
+
     private final AmazonSNS sns;
     private final NotificationSubscriptionsReadDAO dao;
     private final PushNotificationEventDynamoDB pushNotificationEventDynamoDB;
 
     public MobilePushNotificationProcessor(final AmazonSNS sns, final NotificationSubscriptionsReadDAO dao,
-                                           final PushNotificationEventDynamoDB pushNotificationEventDynamoDB) {
+                                           final PushNotificationEventDynamoDB pushNotificationEventDynamoDB,
+                                           final ObjectMapper mapper) {
         this.sns = sns;
         this.dao = dao;
         this.pushNotificationEventDynamoDB = pushNotificationEventDynamoDB;
+        this.mapper = mapper;
+    }
+
+    public static MobilePushNotificationProcessor create(final AmazonSNS sns, final NotificationSubscriptionsReadDAO dao,
+                                                         final PushNotificationEventDynamoDB pushNotificationEventDynamoDB) {
+        return new MobilePushNotificationProcessor(sns, dao, pushNotificationEventDynamoDB, new ObjectMapper());
+    }
+
+    public static MobilePushNotificationProcessor create(final AmazonSNS sns, final NotificationSubscriptionsReadDAO dao,
+                                                         final PushNotificationEventDynamoDB pushNotificationEventDynamoDB,
+                                                         final ObjectMapper mapper) {
+        return new MobilePushNotificationProcessor(sns, dao, pushNotificationEventDynamoDB, mapper);
     }
 
     public PushNotificationEventDynamoDB getPushNotificationEventDynamoDB() {
@@ -117,7 +132,7 @@ class MobilePushNotificationProcessor {
 //        appMessageMap.put("dry_run", false);
         appMessageMap.put("data", content);
 
-        final ObjectMapper mapper = new ObjectMapper();
+
 
         try {
             final String jsonString = mapper.writeValueAsString(appMessageMap);

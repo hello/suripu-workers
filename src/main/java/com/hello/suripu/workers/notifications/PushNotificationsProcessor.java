@@ -112,7 +112,7 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
             // TODO: write to cache to avoid sending multiple notifications
             for(DataInputProtos.periodic_data data: batched_periodic_data.getDataList()) {
                 final Long timestampMillis = data.getUnixTime() * 1000L;
-                final DateTime roundedDateTime = new DateTime(timestampMillis, DateTimeZone.UTC).withSecondOfMinute(0);
+                final DateTime roundedDateTime = new DateTime(timestampMillis, DateTimeZone.UTC).withSecondOfMinute(0).withMillisOfSecond(0);
                 final DateTime now = DateTime.now(DateTimeZone.UTC);
                 final CurrentRoomState currentRoomState = CurrentRoomState.fromRawData(data.getTemperature(), data.getHumidity(), data.getDustMax(), data.getLight(), data.getAudioPeakBackgroundEnergyDb(), data.getAudioPeakDisturbanceEnergyDb(),
                         roundedDateTime.getMillis(),

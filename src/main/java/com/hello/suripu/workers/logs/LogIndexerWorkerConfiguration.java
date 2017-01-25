@@ -45,4 +45,17 @@ public class LogIndexerWorkerConfiguration extends WorkerConfiguration {
     public String segmentWriteKey() {
         return segmentWriteKey;
     }
+
+    @NotNull
+    @JsonProperty("sqs_queue_sleep_score_push")
+    private String sqsQueueSleepScorePush;
+    public String sqsQueueSleepScorePush() {
+        return  sqsQueueSleepScorePush;
+    }
+
+    @JsonProperty("motion_look_back_in_minutes")
+    private Integer motionLookBackInMinutes = 20;
+    public Integer motionLookBackInMinutes() {
+        return motionLookBackInMinutes;
+    }
 }

@@ -14,7 +14,10 @@ import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
+import com.hello.suripu.workers.logs.triggers.Publisher;
 import com.segment.analytics.Analytics;
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +35,7 @@ public class LogIndexerProcessor implements IRecordProcessor {
     private final Meter structuredLogs;
     private final Meter onboardingLogs;
     private final MetricRegistry metrics;
+    private String shardId = "";
 
     private LogIndexerProcessor(
             final MetricRegistry metricRegistry, final LogIndexer<LoggingProtos.BatchLogMessage> senseStructuredLogsIndexer,
@@ -49,21 +53,23 @@ public class LogIndexerProcessor implements IRecordProcessor {
                                              final MetricRegistry metricRegistry,
                                              final Analytics analytics,
                                              final RingTimeHistoryReadDAO ringTimeHistoryDAODynamoDB,
-                                             final MergedUserInfoDynamoDB mergedUserInfoDynamoDB) {
+                                             final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
+                                             final Publisher publisher) {
         return new LogIndexerProcessor(
                 metricRegistry,
-                new SenseStructuredLogIndexer(senseEventsDAO, analytics, ringTimeHistoryDAODynamoDB, mergedUserInfoDynamoDB),
+                new SenseStructuredLogIndexer(senseEventsDAO, analytics, ringTimeHistoryDAODynamoDB, mergedUserInfoDynamoDB, publisher),
                 new OnBoardingLogIndexer(onBoardingLogDAO)
         );
     }
 
     @Override
     public void initialize(String s) {
-
+        this.shardId = s;
     }
 
     @Override
     public void processRecords(final List<Record> records, final IRecordProcessorCheckpointer iRecordProcessorCheckpointer) {
+        DateTime lastMessageArrivalTime = DateTime.now(DateTimeZone.UTC);
         for(final Record record : records) {
             try {
                 final LoggingProtos.BatchLogMessage batchLogMessage = LoggingProtos.BatchLogMessage.parseFrom(record.getData().array());
@@ -76,9 +82,10 @@ public class LogIndexerProcessor implements IRecordProcessor {
                             this.onBoardingLogIndexer.collect(batchLogMessage);
                     }
                 }
+                lastMessageArrivalTime = new DateTime(record.getApproximateArrivalTimestamp(), DateTimeZone.UTC);
 
             } catch (InvalidProtocolBufferException e) {
-                LOGGER.error("Failed converting protobuf: {}", e.getMessage());
+                LOGGER.error("error=protobuf-parsing-failed msg={}", e.getMessage());
             }
         }
 
@@ -90,14 +97,14 @@ public class LogIndexerProcessor implements IRecordProcessor {
             onboardingLogs.mark(onBoardingLogCount);
 
             iRecordProcessorCheckpointer.checkpoint();
-            LOGGER.info("Checkpointing {} records ({} kv logs and {} onboarding logs.)",
+            LOGGER.info("action=checkpointing shard_id={} records={} kv={} onboarding={} last_arrival_time={}",
+                    shardId,
                     records.size(),
                     eventsCount,
-                    onBoardingLogCount);
-        } catch (ShutdownException e) {
-            LOGGER.error("Shutdown: {}", e.getMessage());
-        } catch (InvalidStateException e) {
-            LOGGER.error("Invalid state: {}", e.getMessage());
+                    onBoardingLogCount,
+                    lastMessageArrivalTime);
+        } catch (InvalidStateException | ShutdownException e) {
+            LOGGER.error("error={}", e.getMessage());
         }
     }
 
@@ -108,10 +115,8 @@ public class LogIndexerProcessor implements IRecordProcessor {
             try {
                 iRecordProcessorCheckpointer.checkpoint();
                 LOGGER.warn("Checkpoint successful after shutdown");
-            } catch (InvalidStateException e) {
-                LOGGER.error(e.getMessage());
-            } catch (ShutdownException e) {
-                LOGGER.error(e.getMessage());
+            } catch (InvalidStateException | ShutdownException e) {
+                LOGGER.error("error={}", e.getMessage());
             }
         } else {
             LOGGER.error("Unknown shutdown reason. exit()");

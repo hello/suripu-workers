@@ -51,7 +51,7 @@ common_db:
 kinesis:
   endpoint : https://kinesis.us-east-1.amazonaws.com
   streams :
-    sense_sensors_data_fanout_one : dev_sense_sensors_data_fanout_one
+    push_notifications: dev_push_notifications
 
 app_name: PushNotificationsConsumerDev
 
@@ -70,15 +70,19 @@ logging:
 dynamodb:
   region: us-east-1
   tables:
+    app_stats: app_stats
     alarm_info: alarm_info
     features: features
     preferences: preferences
     push_notification_event: push_notification_event
+    timezone_history: timezone_history
   endpoints:
     alarm_info: http://localhost:7777
+    app_stats: http://localhost:7777
     features : http://localhost:7777
     preferences: http://localhost:7777
     push_notification_event: http://localhost:7777
+    timezone_history: timezone_history
 
 push_notifications:
   arns:

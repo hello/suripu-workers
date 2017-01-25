@@ -13,6 +13,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.ble.SenseCommandProtos;
+import com.hello.suripu.api.notifications.DeviceStatus;
+import com.hello.suripu.api.notifications.PushNotification;
 import com.hello.suripu.core.db.DeviceDAO;
 import com.hello.suripu.core.db.KeyStore;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
@@ -20,12 +22,10 @@ import com.hello.suripu.core.db.PillDataIngestDAO;
 import com.hello.suripu.core.models.DeviceAccountPair;
 import com.hello.suripu.core.models.TrackerMotion;
 import com.hello.suripu.core.models.UserInfo;
+import com.hello.suripu.core.notifications.sender.NotificationSender;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeat;
 import com.hello.suripu.core.pill.heartbeat.PillHeartBeatDAODynamoDB;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
-import com.hello.suripu.workers.notifications.PushNotificationKinesisProducer;
-import com.hello.suripu.workers.protobuf.notifications.DeviceStatus;
-import com.hello.suripu.workers.protobuf.notifications.PushNotification;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
     private final PillHeartBeatDAODynamoDB pillHeartBeatDAODynamoDB; // will replace with interface as soon as we have validated this works
     private final Boolean savePillHeartbeat;
     private final int batteryNotificationThreshold;
-    private final PushNotificationKinesisProducer pushNotificationKinesisProducer;
+    private final NotificationSender notificationSender;
 
     private MetricRegistry metrics;
     private final Meter messagesProcessed;
@@ -64,7 +64,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                  final Boolean savePillHeartbeat,
                                  final MetricRegistry metrics,
                                  final int batteryNotificationThreshold,
-                                 final PushNotificationKinesisProducer pushNotificationKinesisProducer)
+                                 final NotificationSender notificationSender)
     {
         this.pillDataIngestDAO = pillDataIngestDAO;
         this.batchSize = batchSize;
@@ -74,7 +74,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
         this.pillHeartBeatDAODynamoDB = pillHeartBeatDAODynamoDB;
         this.savePillHeartbeat = savePillHeartbeat;
         this.batteryNotificationThreshold = batteryNotificationThreshold;
-        this.pushNotificationKinesisProducer = pushNotificationKinesisProducer;
+        this.notificationSender = notificationSender;
 
 
         this.messagesProcessed = metrics.meter(name(SavePillDataProcessor.class, "messages-processed"));
@@ -233,7 +233,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                     }
                 }
 
-                pushNotificationKinesisProducer.putNotifications(pushNotifications);
+                notificationSender.sendBatch(pushNotifications);
 
             }
 

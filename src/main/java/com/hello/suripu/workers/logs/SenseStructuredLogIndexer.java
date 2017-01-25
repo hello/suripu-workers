@@ -8,10 +8,12 @@ import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
 import com.hello.suripu.core.db.SenseEventsDAO;
+import com.hello.suripu.core.flipper.FeatureFlipper;
 import com.hello.suripu.core.metrics.DeviceEvents;
 import com.hello.suripu.core.models.RingTime;
 import com.hello.suripu.core.models.UserInfo;
 import com.hello.suripu.workers.WorkerFeatureFlipper;
+import com.hello.suripu.workers.logs.triggers.Publisher;
 import com.librato.rollout.RolloutClient;
 import com.segment.analytics.Analytics;
 import com.segment.analytics.messages.MessageBuilder;
@@ -40,18 +42,20 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
     private final RingTimeHistoryReadDAO ringHistoryDAO;
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
     private final static Pattern PATTERN = Pattern.compile("(\\w+:{1}\\w+)");
-
+    private final Publisher publisher;
 
     public SenseStructuredLogIndexer(
             final SenseEventsDAO senseEventsDAO,
             final Analytics analytics,
             final RingTimeHistoryReadDAO ringHistoryDDB,
-            final MergedUserInfoDynamoDB mergedUserInfoDynamoDB) {
+            final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
+            final Publisher publisher) {
         this.senseEventsDAO = senseEventsDAO;
         this.deviceEventsList = Lists.newArrayList();
         this.analytics = analytics;
         this.ringHistoryDAO = ringHistoryDDB;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
+        this.publisher = publisher;
         ObjectGraphRoot.getInstance().inject(this);
     }
 
@@ -61,6 +65,7 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
         final ImmutableList<DeviceEvents> events = ImmutableList.copyOf(deviceEventsList);
         final Integer count = senseEventsDAO.write(events);
         this.sendToSegment(events);
+        this.sendToQueue(events);
         deviceEventsList.clear();
         analytics.flush();
         return count;
@@ -97,6 +102,26 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
         }
     }
 
+
+    private void sendToQueue(final List<DeviceEvents> deviceEventsList) {
+
+        for(final DeviceEvents deviceEvents : deviceEventsList) {
+
+            if(!hasAlarmDismissed(deviceEvents.events)) {
+                continue;
+            }
+            LOGGER.info("action=dismiss-alarm sense_id={}", deviceEvents.deviceId);
+            final Set<Long> accountIds = queryAlarmAround(deviceEvents, pairedAccounts(deviceEvents), 10);
+            for(final Long accountId : accountIds) {
+
+                if(!flipper.userFeatureActive(FeatureFlipper.PUSH_NOTIFICATIONS_ENABLED, accountId, Collections.EMPTY_LIST)) {
+                    continue;
+                }
+
+                publisher.publish(accountId, deviceEvents);
+            }
+        }
+    }
 
     private void sendToSegment(final List<DeviceEvents> deviceEventsList) {
         for(final DeviceEvents deviceEvents : deviceEventsList) {
@@ -178,5 +203,9 @@ public class SenseStructuredLogIndexer implements LogIndexer<LoggingProtos.Batch
 
     public static boolean hasAlarm(final Set<String> events) {
         return  events.contains(SegmentHelpers.ALARM_RING_EVENT) || events.contains(SegmentHelpers.ALARM_DISMISSED_EVENT);
+    }
+
+    public static boolean hasAlarmDismissed(final Set<String> events) {
+        return events.contains(SegmentHelpers.ALARM_DISMISSED_EVENT);
     }
 }

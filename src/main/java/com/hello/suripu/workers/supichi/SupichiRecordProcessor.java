@@ -197,6 +197,10 @@ public class SupichiRecordProcessor implements IRecordProcessor {
                 .withDateTimeUTC(new DateTime(speechResultsData.getCreated(), DateTimeZone.UTC))
                 .withUpdatedUTC(new DateTime(speechResultsData.getUpdated(), DateTimeZone.UTC));
 
+        if (speechResultsData.hasFwVersion()) {
+            builder.withFirmwareVersion(speechResultsData.getFwVersion());
+        }
+
         if (speechResultsData.hasResult()) {
             builder.withResult(Result.fromString(speechResultsData.getResult()));
         }

@@ -73,3 +73,4 @@ common_db:
   minIdleTime: 1 minute
 
 segment_write_key: AnMchQr1VXQhPKjeYuoEEQ7pPRlow9SO
+sqs_queue_sleep_score_push: https://sqs.us-east-1.amazonaws.com/053216739513/dev_sleep_score_push

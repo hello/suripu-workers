@@ -160,7 +160,8 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
                 environment.metrics(),
                 analytics,
                 ringTimeHistoryDAODynamoDB,
-                mergedUserInfoDynamoDB
+                mergedUserInfoDynamoDB,
+                awsCredentialsProvider
         );
 
         // TODO: get this from config once core is deployed with the DynamoDBTableName

@@ -118,6 +118,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 .withAccountPreferencesDAO(accountPreferencesDAO)
                 .withFeatureFlipper(new RolloutClient(new DynamoDBAdapter(featureStore, 30)))
                 .withAppStatsDAO(appStatsDAO)
+                .withArns(configuration.getPushNotificationsConfiguration().getArns())
                 .build();
 
         final HelloPushMessageGenerator pushMessageGenerator = new HelloPushMessageGenerator();

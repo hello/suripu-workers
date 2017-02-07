@@ -80,7 +80,7 @@ dynamodb:
     alarm_info: prod_alarm_info
     app_stats: app_stats
     features: features
-    preferences: prod_preferences
+    preferences: preferences
     push_notification_event: push_notification_event
     timezone_history: timezone_history
   endpoints:

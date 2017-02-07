@@ -24,7 +24,7 @@ import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.flipper.DynamoDBAdapter;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessorImpl;
-import com.hello.suripu.core.notifications.NotificationSubscriptionsReadDAO;
+import com.hello.suripu.core.notifications.NotificationSubscriptionsDAO;
 import com.hello.suripu.core.notifications.PushNotificationEventDynamoDB;
 import com.hello.suripu.core.preferences.AccountPreferencesDAO;
 import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
@@ -91,7 +91,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         final AccountPreferencesDAO accountPreferencesDAO = AccountPreferencesDynamoDB.create(dynamoDBClientFactory.getForTable(DynamoDBTableName.PREFERENCES), tableNames.get(DynamoDBTableName.PREFERENCES));
         final AppStatsDAO appStatsDAO = new AppStatsDAODynamoDB(dynamoDBClientFactory.getForTable(DynamoDBTableName.APP_STATS), tableNames.get(DynamoDBTableName.APP_STATS));
 
-        final NotificationSubscriptionsReadDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsReadDAO.class);
+        final NotificationSubscriptionsDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsDAO.class);
         final AmazonSNS amazonSNS = new AmazonSNSClient(awsCredentialsProvider);
         final AmazonDynamoDB pushNotificationDynamoDBClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.PUSH_NOTIFICATION_EVENT);
         final PushNotificationEventDynamoDB pushNotificationEventDynamoDB = new PushNotificationEventDynamoDB(

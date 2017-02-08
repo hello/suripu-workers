@@ -113,6 +113,7 @@ logging:
 
 dynamo_db:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
       features : features
       calibration : prod_calibration
@@ -124,19 +125,8 @@ dynamo_db:
       sleep_score : prod_sleep_score
       device_data : prod_sense_data
       marketing_insights_seen : prod_marketing_insights_seen
+  endpoints: {}
 
-
-  endpoints:
-      features : http://dynamodb.us-east-1.amazonaws.com
-      calibration : http://dynamodb.us-east-1.amazonaws.com
-      insights : http://dynamodb.us-east-1.amazonaws.com
-      insights_last_seen : http://dynamodb.us-east-1.amazonaws.com
-      sense_key_store : http://dynamodb.us-east-1.amazonaws.com
-      sleep_stats : http://dynamodb.us-east-1.amazonaws.com
-      preferences : http://dynamodb.us-east-1.amazonaws.com
-      sleep_score : http://dynamodb.us-east-1.amazonaws.com
-      device_data : http://dynamodb.us-east-1.amazonaws.com
-      marketing_insights_seen : http://dynamodb.us-east-1.amazonaws.com
 
 sleep_score_version: v_0_1
 sleep_stats_version: v_0_2

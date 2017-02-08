@@ -77,6 +77,7 @@ logging:
 
 dynamo_db:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
       agg_stats: agg_stats
       calibration: calibration
@@ -84,14 +85,7 @@ dynamo_db:
       features: features
       pill_data: pill_data
       sleep_stats: sleep_stats
-
-  endpoints:
-      agg_stats: http://dynamodb.us-east-1.amazonaws.com
-      calibration: http://dynamodb.us-east-1.amazonaws.com
-      device_data: http://dynamodb.us-east-1.amazonaws.com
-      features: http://dynamodb.us-east-1.amazonaws.com
-      pill_data: http://dynamodb.us-east-1.amazonaws.com
-      sleep_stats: http://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}
 
 sleep_stats_version: v_0_2
 agg_stats_version: v_0_1

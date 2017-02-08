@@ -81,6 +81,7 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
     alarm_info: prod_alarm_info
     features: features
@@ -88,14 +89,7 @@ dynamodb:
     ring_time: prod_ring_time
     smart_alarm_log: prod_smart_alarm_log
     timezone_history: prod_timezone_history
-
-  endpoints:
-    alarm_info: http://dynamodb.us-east-1.amazonaws.com
-    features: http://dynamodb.us-east-1.amazonaws.com
-    pill_data: http://dynamodb.us-east-1.amazonaws.com
-    ring_time: http://dynamodb.us-east-1.amazonaws.com
-    smart_alarm_log: http://dynamodb.us-east-1.amazonaws.com
-    timezone_history: http://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}
 
 smart_alarm_process_ahead_in_minutes: 30
 

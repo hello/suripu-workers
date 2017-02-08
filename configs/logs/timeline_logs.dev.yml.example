@@ -59,9 +59,8 @@ app_name: TimelineLogIndexerDev
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
     features: features
     device_data: sense_data_local
-  endpoints:
-    features: http://localhost:7777
-    device_data: http://localhost:7777
+  endpoints: {}

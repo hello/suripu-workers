@@ -19,18 +19,14 @@ app_name: LogIndexerDev
 
 dynamo_db:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
       alarm_info: alarm_info
       features : features
       ring_time_history: ring_history_by_account
       sense_events: sense_events
       worker_launch_history: worker_launch_history
-  endpoints:
-      alarm_info: http://localhost:7777
-      features : http://localhost:7777
-      ring_time_history: http://localhost:7777
-      sense_events: http://localhost:7777
-      worker_launch_history: http://localhost:7777
+  endpoints: {}
 
 common_db:
   # the name of your JDBC driver

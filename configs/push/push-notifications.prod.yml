@@ -75,6 +75,7 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
     alarm_info: prod_alarm_info
     app_stats: prod_app_stats
@@ -82,13 +83,7 @@ dynamodb:
     preferences: prod_preferences
     push_notification_event: prod_push_notification_event
     timezone_history: prod_timezone_history
-  endpoints:
-    alarm_info: http://dynamodb.us-east-1.amazonaws.com
-    app_stats: http://dynamodb.us-east-1.amazonaws.com
-    features : http://dynamodb.us-east-1.amazonaws.com
-    preferences: http://dynamodb.us-east-1.amazonaws.com
-    push_notification_event: http://dynamodb.us-east-1.amazonaws.com
-    timezone_history: http://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}
 
 push_notifications:
   arns:
@@ -101,4 +96,6 @@ active_hours:
   - 18
   - 19
   - 20
+
+segment_write_key: UiFCuqdEpi6STaMCx3bo70Hii0XvWnOK
 

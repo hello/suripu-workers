@@ -21,12 +21,11 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
     speech_results: speech_results
     speech_timeline: speech_timeline
-  endpoints:
-    speech_results: http://localhost:7777
-    speech_timeline: http://localhost:7777
+  endpoints: {}
 
 sense_upload_audio:  # bucket to save audio uploaded from Sense
   s3_bucket_name: hello-voice-upload-dev

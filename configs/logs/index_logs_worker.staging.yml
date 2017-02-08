@@ -19,18 +19,14 @@ app_name: LogIndexer
 
 dynamo_db:
   region: us-east-1
+  default_endpoint: https://dynamodb.us-east-1.amazonaws.com
   tables:
       alarm_info: alarm_info
       features : features
       ring_time_history: ring_history_by_account
       sense_events: sense_events
       worker_launch_history: worker_launch_history
-  endpoints:
-      alarm_info: https://dynamodb.us-east-1.amazonaws.com
-      features : https://dynamodb.us-east-1.amazonaws.com
-      ring_time_history: https://dynamodb.us-east-1.amazonaws.com
-      sense_events: https://dynamodb.us-east-1.amazonaws.com
-      worker_launch_history: https://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}
 
 common_db:
   driverClass: org.postgresql.Driver

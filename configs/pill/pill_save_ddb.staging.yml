@@ -81,15 +81,11 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
     alarm_info: alarm_info
     features: features
     pill_key_store : pill_key_store
     pill_heartbeat : pill_heartbeat
     pill_data: pill_data
-  endpoints:
-    alarm_info: http://dynamodb.us-east-1.amazonaws.com
-    features : http://dynamodb.us-east-1.amazonaws.com
-    pill_key_store : http://dynamodb.us-east-1.amazonaws.com
-    pill_heartbeat : http://dynamodb.us-east-1.amazonaws.com
-    pill_data: http://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}

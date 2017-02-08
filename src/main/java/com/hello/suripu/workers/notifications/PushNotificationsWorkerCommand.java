@@ -32,6 +32,7 @@ import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
 import com.librato.rollout.RolloutClient;
+import com.segment.analytics.Analytics;
 import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
@@ -109,6 +110,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
+        final Analytics analytics = Analytics.builder(configuration.segmentWriteKey()).build();
         final MobilePushNotificationProcessor pushNotificationProcessor = new MobilePushNotificationProcessorImpl.Builder()
                 .withSns(amazonSNS)
                 .withSubscriptionDAO(notificationSubscriptionsDAO)
@@ -118,6 +120,8 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 .withAccountPreferencesDAO(accountPreferencesDAO)
                 .withFeatureFlipper(new RolloutClient(new DynamoDBAdapter(featureStore, 30)))
                 .withAppStatsDAO(appStatsDAO)
+                .withArns(configuration.getPushNotificationsConfiguration().getArns())
+                .withAnalytics(analytics)
                 .build();
 
         final HelloPushMessageGenerator pushMessageGenerator = new HelloPushMessageGenerator();

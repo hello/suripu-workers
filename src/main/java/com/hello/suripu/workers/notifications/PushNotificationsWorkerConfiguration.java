@@ -53,4 +53,11 @@ public class PushNotificationsWorkerConfiguration extends WorkerConfiguration {
     @JsonProperty("active_hours")
     private Set<Integer> activeHours = Sets.newHashSet();
     public Set<Integer> getActiveHours() {return activeHours;}
+
+    @NotNull
+    @JsonProperty("segment_write_key")
+    private String segmentWriteKey;
+    public String segmentWriteKey() {
+        return segmentWriteKey;
+    }
 }

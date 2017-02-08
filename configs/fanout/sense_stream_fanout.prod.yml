@@ -49,7 +49,7 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
     features: features
-  endpoints:
-    features : http://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}

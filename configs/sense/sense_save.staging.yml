@@ -109,6 +109,7 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
     alarm_info: alarm_info
     features: features
@@ -116,13 +117,7 @@ dynamodb:
     sense_last_seen : sense_last_seen
     calibration : calibration
     device_data: sense_data
-  endpoints:
-    alarm_info: http://dynamodb.us-east-1.amazonaws.com
-    features : http://dynamodb.us-east-1.amazonaws.com
-    sense_prefix: http://dynamodb.us-east-1.amazonaws.com
-    sense_last_seen : http://dynamodb.us-east-1.amazonaws.com
-    calibration : http://dynamodb.us-east-1.amazonaws.com
-    device_data: http://dynamodb.us-east-1.amazonaws.com
+  endpoints: {}
 
 redis:
   host: localhost

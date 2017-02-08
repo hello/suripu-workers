@@ -108,6 +108,7 @@ logging:
 
 dynamo_db:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
       features : features
       calibration : calibration
@@ -118,17 +119,7 @@ dynamo_db:
       sleep_score : sleep_score
       device_data : sense_data_local
       marketing_insights_seen: marketing_insight_seen
-
-  endpoints:
-      features : http://localhost:7777
-      calibration: http://localhost:7777
-      insights: http://localhost:7777
-      insights_last_seen: http://localhost:7777
-      sleep_stats : http://localhost:7777
-      preferences : http://localhost:7777
-      sleep_score : http://localhost:7777
-      device_data : http://localhost:7777
-      marketing_insights_seen: http://localhost:7777
+  endpoints: {}
 
 sleep_score_version: v_0_1
 sleep_stats_version: v_0_2

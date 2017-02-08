@@ -69,6 +69,7 @@ logging:
       timeZone: UTC
 dynamodb:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
     app_stats: app_stats
     alarm_info: alarm_info
@@ -76,13 +77,7 @@ dynamodb:
     preferences: preferences
     push_notification_event: push_notification_event
     timezone_history: timezone_history
-  endpoints:
-    alarm_info: http://localhost:7777
-    app_stats: http://localhost:7777
-    features : http://localhost:7777
-    preferences: http://localhost:7777
-    push_notification_event: http://localhost:7777
-    timezone_history: timezone_history
+  endpoints: {}
 
 push_notifications:
   arns:
@@ -98,4 +93,6 @@ active_hours:
   - 18
   - 19
   - 20
+
+segment_write_key: AnMchQr1VXQhPKjeYuoEEQ7pPRlow9SO
 

@@ -68,6 +68,7 @@ logging:
 
 dynamo_db:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
       agg_stats: agg_stats
       calibration: calibration
@@ -75,14 +76,7 @@ dynamo_db:
       features: features
       pill_data: pill_data
       sleep_stats: sleep_stats
-
-  endpoints:
-      agg_stats: http://localhost:7777
-      calibration: http://localhost:7777
-      device_data: http://localhost:7777
-      features: http://localhost:7777
-      pill_data: http://localhost:7777
-      sleep_stats: http://localhost:7777
+  endpoints: {}
 
 sleep_stats_version: v_0_2
 agg_stats_version: v_0_1

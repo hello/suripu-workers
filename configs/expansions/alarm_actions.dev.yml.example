@@ -50,6 +50,7 @@ logging:
 
 dynamodb:
   region: us-east-1
+  default_endpoint: http://localhost:7777
   tables:
     alarm_info: alarm_info
     features: features
@@ -57,13 +58,7 @@ dynamodb:
     ring_time: ring_time
     smart_alarm_log: smart_alarm_log
     timezone_history: timezone_history
-  endpoints:
-    alarm_info: http://localhost:7777
-    features: http://localhost:7777
-    pill_data: http://localhost:7777
-    ring_time: http://localhost:7777
-    smart_alarm_log: http://localhost:7777
-    timezone_history: http://localhost:7777
+  endpoints: {}
 
 smart_alarm_process_ahead_in_minutes: 30
 

@@ -4,6 +4,7 @@ import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorFactory;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
@@ -26,8 +27,8 @@ import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessorImpl;
 import com.hello.suripu.core.notifications.NotificationSubscriptionsDAO;
 import com.hello.suripu.core.notifications.PushNotificationEventDynamoDB;
-import com.hello.suripu.core.preferences.AccountPreferencesDAO;
-import com.hello.suripu.core.preferences.AccountPreferencesDynamoDB;
+import com.hello.suripu.core.notifications.settings.NotificationSettingsDAO;
+import com.hello.suripu.core.notifications.settings.NotificationSettingsDynamoDB;
 import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
@@ -89,7 +90,11 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         final AmazonDynamoDBClientFactory dynamoDBClientFactory = AmazonDynamoDBClientFactory.create(awsCredentialsProvider, clientConfig, configuration.dynamoDBConfiguration());
 
         final TimeZoneHistoryDAO timeZoneHistoryDAO = new TimeZoneHistoryDAODynamoDB(dynamoDBClientFactory.getForTable(DynamoDBTableName.TIMEZONE_HISTORY), tableNames.get(DynamoDBTableName.TIMEZONE_HISTORY));
-        final AccountPreferencesDAO accountPreferencesDAO = AccountPreferencesDynamoDB.create(dynamoDBClientFactory.getForTable(DynamoDBTableName.PREFERENCES), tableNames.get(DynamoDBTableName.PREFERENCES));
+        final AmazonDynamoDB settingsClient = dynamoDBClientFactory.getForTable(DynamoDBTableName.PUSH_NOTIFICATION_SETTINGS);
+        final NotificationSettingsDAO notificationSettingsDAO = NotificationSettingsDynamoDB.create(
+                new DynamoDB(settingsClient),
+                tableNames.get(DynamoDBTableName.PUSH_NOTIFICATION_SETTINGS)
+        );
         final AppStatsDAO appStatsDAO = new AppStatsDAODynamoDB(dynamoDBClientFactory.getForTable(DynamoDBTableName.APP_STATS), tableNames.get(DynamoDBTableName.APP_STATS));
 
         final NotificationSubscriptionsDAO notificationSubscriptionsDAO = commonDBI.onDemand(NotificationSubscriptionsDAO.class);
@@ -107,6 +112,9 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 featureNamespace
         );
 
+
+
+
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
@@ -117,7 +125,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 .withPushNotificationEventDynamoDB(pushNotificationEventDynamoDB)
                 .withMapper(environment.getObjectMapper())
                 .withTimeZoneHistory(timeZoneHistoryDAO)
-                .withAccountPreferencesDAO(accountPreferencesDAO)
+                .withSettingsDAO(notificationSettingsDAO)
                 .withFeatureFlipper(new RolloutClient(new DynamoDBAdapter(featureStore, 30)))
                 .withAppStatsDAO(appStatsDAO)
                 .withArns(configuration.getPushNotificationsConfiguration().getArns())

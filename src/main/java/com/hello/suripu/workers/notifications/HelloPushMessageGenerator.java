@@ -16,7 +16,7 @@ public class HelloPushMessageGenerator {
 
     static Optional<HelloPushMessage> generateSleepScoreMessage(final PushNotification.UserPushNotification userPushNotification) {
         final String nightOf = userPushNotification.getNewSleepScore().getDate().substring(0,10);
-        final HelloPushMessage msg = new HelloPushMessage(String.format("Your Sleep Score for last night is %d", userPushNotification.getNewSleepScore().getScore()), "sleep_score", nightOf );
+        final HelloPushMessage msg = new HelloPushMessage(String.format("Your Sleep Score for last night is %d.", userPushNotification.getNewSleepScore().getScore()), "sleep_score", nightOf );
         return Optional.of(msg);
     }
 }

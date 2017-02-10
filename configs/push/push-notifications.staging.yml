@@ -78,11 +78,11 @@ dynamodb:
   region: us-east-1
   default_endpoint: http://dynamodb.us-east-1.amazonaws.com
   tables:
-    alarm_info: prod_alarm_info
+    alarm_info: alarm_info
     app_stats: app_stats
     features: features
-    preferences: preferences
     push_notification_event: push_notification_event
+    push_notification_settings: push_notification_settings
     timezone_history: timezone_history
   endpoints: {}
 

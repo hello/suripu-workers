@@ -94,9 +94,10 @@ push_notifications:
   table_name: notifications
 
 active_hours:
+  - 16
+  - 17
   - 18
   - 19
-  - 20
 
 segment_write_key: AnMchQr1VXQhPKjeYuoEEQ7pPRlow9SO
 

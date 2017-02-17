@@ -11,9 +11,11 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.AppStatsDAO;
 import com.hello.suripu.core.db.TimeZoneHistoryDAO;
 import com.hello.suripu.core.flipper.FeatureFlipper;
+import com.hello.suripu.core.models.Account;
 import com.hello.suripu.core.models.MobilePushRegistration;
 import com.hello.suripu.core.models.TimeZoneHistory;
 import com.hello.suripu.core.notifications.HelloPushMessage;
@@ -63,6 +65,8 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
     private final NotificationSubscriptionDAOWrapper wrapper;
     private final Analytics analytics;
     private final Set<Integer> activeHours;
+    private final AccountDAO accountDAO;
+
     private MobilePushNotificationProcessorImpl(final PushNotificationEventDynamoDB pushNotificationEventDynamoDB,
                                                 final ObjectMapper mapper,
                                                 final RolloutClient featureFlipper,
@@ -71,7 +75,8 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
                                                 final TimeZoneHistoryDAO timeZoneHistoryDAO,
                                                 final NotificationSubscriptionDAOWrapper wrapper,
                                                 final Analytics analytics,
-                                                final Set<Integer> activeHours) {
+                                                final Set<Integer> activeHours,
+                                                final AccountDAO accountDAO) {
         this.pushNotificationEventDynamoDB = pushNotificationEventDynamoDB;
         this.mapper = mapper;
         this.featureFlipper = featureFlipper;
@@ -81,14 +86,11 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
         this.wrapper = wrapper;
         this.analytics = analytics;
         this.activeHours = activeHours;
+        this.accountDAO = accountDAO;
     }
 
     @Override
     public void push(final PushNotificationEvent event) {
-
-        if(!featureFlipper.userFeatureActive(FeatureFlipper.PUSH_NOTIFICATIONS_ENABLED, event.accountId, Collections.EMPTY_LIST)) {
-            return;
-        }
 
         final Optional<TimeZoneHistory> timeZoneHistoryOptional = timeZoneHistoryDAO.getCurrentTimeZone(event.accountId);
         if(!timeZoneHistoryOptional.isPresent()) {
@@ -126,9 +128,16 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
                 return;
             }
 
-            final DateTime nowLocal = new DateTime(event.timestamp, tz);
-            if(!activeHours.contains(nowLocal.getHourOfDay())) {
+            final DateTime nowLocal = new DateTime(event.timestamp.getMillis(), tz);
+            int hourOfDay = nowLocal.getHourOfDay();
+            if(!activeHours.contains(hourOfDay)) {
                 LOGGER.info("action=disable-non-active-hours account_id={} hour={}", event.accountId, nowLocal.getHourOfDay());
+                return;
+            }
+
+            final Optional<Account> accountOptional = accountDAO.getById(event.accountId);
+            if(accountOptional.isPresent() && accountOptional.get().getAgeInDays() <= 14) {
+                LOGGER.warn("action=push-disable-account-too-young account_id={} age={}", event.accountId, accountOptional.get().getAgeInDays());
                 return;
             }
         }
@@ -284,6 +293,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
         private Map<String, String> arns = Maps.newHashMap();
         private Analytics analytics;
         private Set<Integer> activeHours = Sets.newHashSet();
+        private AccountDAO accountDAO;
 
         public Builder withSns(final AmazonSNS sns) {
             this.sns = sns;
@@ -340,6 +350,12 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
             return this;
         }
 
+
+        public Builder withAccountDAO(final AccountDAO accountDAO) {
+            this.accountDAO = accountDAO;
+            return this;
+        }
+
         public MobilePushNotificationProcessor build() {
             checkNotNull(sns, "sns can not be null");
             checkNotNull(subscriptionDAO, "subscription can not be null");
@@ -348,10 +364,11 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
             checkNotNull(appStatsDAO, "appStatsDAO can not be null");
             checkNotNull(settingsDAO, "settingsDAO can not be null");
             checkNotNull(analytics, "analytics can not be null");
+            checkNotNull(accountDAO, "account dao can not be null");
 
             final NotificationSubscriptionDAOWrapper wrapper = NotificationSubscriptionDAOWrapper.create(subscriptionDAO, sns, arns);
             return new MobilePushNotificationProcessorImpl(pushNotificationEventDynamoDB, mapper,
-                    featureFlipper, appStatsDAO, settingsDAO, timeZoneHistoryDAO, wrapper, analytics, activeHours);
+                    featureFlipper, appStatsDAO, settingsDAO, timeZoneHistoryDAO, wrapper, analytics, activeHours, accountDAO);
         }
 
     }

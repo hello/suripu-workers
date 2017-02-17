@@ -1,5 +1,8 @@
 package com.hello.suripu.workers.expansions;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+
 import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
@@ -12,8 +15,6 @@ import com.amazonaws.services.kinesis.metrics.interfaces.MetricsLevel;
 import com.amazonaws.services.kms.AWSKMSClient;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.alerts.AlertsDAO;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
@@ -33,6 +34,18 @@ import com.hello.suripu.coredropwizard.configuration.KMSConfiguration;
 import com.hello.suripu.coredropwizard.metrics.RegexMetricFilter;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
+
+import net.sourceforge.argparse4j.inf.Namespace;
+
+import org.skife.jdbi.v2.DBI;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
 import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.setup.Environment;
 import is.hello.gaibu.core.db.ExpansionDataDAO;
@@ -41,16 +54,8 @@ import is.hello.gaibu.core.db.ExternalTokenDAO;
 import is.hello.gaibu.core.stores.PersistentExpansionDataStore;
 import is.hello.gaibu.core.stores.PersistentExpansionStore;
 import is.hello.gaibu.core.stores.PersistentExternalTokenStore;
-import net.sourceforge.argparse4j.inf.Namespace;
-import org.skife.jdbi.v2.DBI;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import okhttp3.OkHttpClient;
 import redis.clients.jedis.JedisPool;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActionWorkerConfiguration> {
     private final static Logger LOGGER = LoggerFactory.getLogger(AlarmActionWorkerCommand.class);
@@ -150,8 +155,11 @@ public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActi
         final ExpansionsDAO externalApplicationsDAO = commonDB.onDemand(ExpansionsDAO.class);
         final PersistentExpansionStore expansionStore = new PersistentExpansionStore(externalApplicationsDAO);
 
+        // Required for Nest token revocation
+        final OkHttpClient httpClient = new OkHttpClient(); //TODO: configure timeouts
+
         final ExternalTokenDAO externalTokenDAO = commonDB.onDemand(ExternalTokenDAO.class);
-        final PersistentExternalTokenStore externalTokenStore = new PersistentExternalTokenStore(externalTokenDAO, expansionStore);
+        final PersistentExternalTokenStore externalTokenStore = new PersistentExternalTokenStore(externalTokenDAO, expansionStore, tokenKMSVault, httpClient);
 
         final ExpansionDataDAO expansionDataDAO = commonDB.onDemand(ExpansionDataDAO.class);
         final PersistentExpansionDataStore externalAppDataStore = new PersistentExpansionDataStore(expansionDataDAO);
@@ -172,7 +180,6 @@ public class AlarmActionWorkerCommand extends WorkerEnvironmentCommand<AlarmActi
                 expansionStore,
                 externalTokenStore,
                 externalAppDataStore,
-                tokenKMSVault,
                 jedisPool,
                 deviceDAO,
                 alertsDAO,

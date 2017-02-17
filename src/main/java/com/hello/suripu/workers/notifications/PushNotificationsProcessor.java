@@ -6,7 +6,6 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorC
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownReason;
 import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.notifications.PushNotification;
 import com.hello.suripu.core.notifications.HelloPushMessage;
@@ -21,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Set;
 
 public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
 
@@ -31,15 +29,12 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
     private final HelloPushMessageGenerator helloPushMessageGenerator;
 
     private String shardId = "N/A";
-    private final ImmutableSet<Integer> activeHours;
 
     public PushNotificationsProcessor(
             final MobilePushNotificationProcessor mobilePushNotificationProcessor,
-            final HelloPushMessageGenerator helloPushMessageGenerator,
-            final Set<Integer> activeHours) {
+            final HelloPushMessageGenerator helloPushMessageGenerator) {
         this.mobilePushNotificationProcessor = mobilePushNotificationProcessor;
         this.helloPushMessageGenerator = helloPushMessageGenerator;
-        this.activeHours = ImmutableSet.copyOf(activeHours);
     }
 
     @Override

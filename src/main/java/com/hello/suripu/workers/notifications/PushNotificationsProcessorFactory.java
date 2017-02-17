@@ -10,19 +10,16 @@ public class PushNotificationsProcessorFactory implements IRecordProcessorFactor
 
     private final MobilePushNotificationProcessor mobilePushNotificationProcessor;
     private final HelloPushMessageGenerator pushMessageGenerator;
-    private final Set<Integer> activeHours;
 
     public PushNotificationsProcessorFactory(final MobilePushNotificationProcessor mobilePushNotificationProcessor,
-                                             final HelloPushMessageGenerator pushMessageGenerator,
-                                             final Set<Integer> activeHours) {
+                                             final HelloPushMessageGenerator pushMessageGenerator) {
         this.mobilePushNotificationProcessor = mobilePushNotificationProcessor;
         this.pushMessageGenerator = pushMessageGenerator;
-        this.activeHours = activeHours;
     }
 
     @Override
     public IRecordProcessor createProcessor()  {
 
-        return new PushNotificationsProcessor(mobilePushNotificationProcessor, pushMessageGenerator, activeHours);
+        return new PushNotificationsProcessor(mobilePushNotificationProcessor, pushMessageGenerator);
     }
 }

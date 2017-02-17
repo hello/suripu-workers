@@ -24,9 +24,7 @@ import com.hello.suripu.core.db.TimeZoneHistoryDAODynamoDB;
 import com.hello.suripu.core.db.util.JodaArgumentFactory;
 import com.hello.suripu.core.flipper.DynamoDBAdapter;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
-import com.hello.suripu.core.notifications.MobilePushNotificationProcessorImpl;
 import com.hello.suripu.core.notifications.NotificationSubscriptionsDAO;
-import com.hello.suripu.core.notifications.PushNotificationEventDynamoDB;
 import com.hello.suripu.core.notifications.settings.NotificationSettingsDAO;
 import com.hello.suripu.core.notifications.settings.NotificationSettingsDynamoDB;
 import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
@@ -130,11 +128,12 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 .withAppStatsDAO(appStatsDAO)
                 .withArns(configuration.getPushNotificationsConfiguration().getArns())
                 .withAnalytics(analytics)
+                .withActiveHours(configuration.getActiveHours())
                 .build();
 
         final HelloPushMessageGenerator pushMessageGenerator = new HelloPushMessageGenerator();
 
-        final IRecordProcessorFactory kinesisFactory = new PushNotificationsProcessorFactory(pushNotificationProcessor, pushMessageGenerator, configuration.getActiveHours());
+        final IRecordProcessorFactory kinesisFactory = new PushNotificationsProcessorFactory(pushNotificationProcessor, pushMessageGenerator);
         final Worker worker = new Worker(kinesisFactory, kinesisConfig);
         worker.run();
     }

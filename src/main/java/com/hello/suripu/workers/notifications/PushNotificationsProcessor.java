@@ -11,6 +11,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.notifications.PushNotification;
 import com.hello.suripu.core.notifications.HelloPushMessage;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
+import com.hello.suripu.core.notifications.Periodicity;
 import com.hello.suripu.core.notifications.PushNotificationEvent;
 import com.hello.suripu.core.notifications.PushNotificationEventType;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
@@ -79,17 +80,18 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
         final PushNotificationEvent.Builder eventBuilder = PushNotificationEvent.newBuilder()
                 .withAccountId(userPushNotification.getAccountId())
                 .withHelloPushMessage(helloPushMessage.get())
-                .withTimestamp(new DateTime(userPushNotification.getTimestamp(), DateTimeZone.UTC)); // normalized to the day/week
+                .withTimestamp(new DateTime(userPushNotification.getTimestamp(), DateTimeZone.UTC));
 
         if(userPushNotification.hasSenseId()) {
             eventBuilder.withSenseId(userPushNotification.getSenseId());
         }
 
-
         if(userPushNotification.hasNewSleepScore()) {
             eventBuilder.withType(PushNotificationEventType.SLEEP_SCORE);
+            eventBuilder.withPeriodicity(Periodicity.DAILY);
         } else if(userPushNotification.hasPillBatteryLow()) {
             eventBuilder.withType(PushNotificationEventType.PILL_BATTERY);
+            eventBuilder.withPeriodicity(Periodicity.WEEKLY);
         }
 
         try {

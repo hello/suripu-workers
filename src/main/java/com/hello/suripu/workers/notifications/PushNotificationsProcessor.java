@@ -8,6 +8,7 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.google.common.base.Optional;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.notifications.PushNotification;
+import com.hello.suripu.core.flipper.FeatureFlipper;
 import com.hello.suripu.core.notifications.HelloPushMessage;
 import com.hello.suripu.core.notifications.MobilePushNotificationProcessor;
 import com.hello.suripu.core.notifications.Periodicity;
@@ -19,6 +20,7 @@ import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 
 public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
@@ -65,6 +67,11 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
      * Send push notifications if conditions warrant it and within the hours
      */
     private void sendMessage(final PushNotification.UserPushNotification userPushNotification) {
+
+        if(!flipper.userFeatureActive(FeatureFlipper.PUSH_NOTIFICATIONS_ENABLED, userPushNotification.getAccountId(), Collections.EMPTY_LIST)) {
+            LOGGER.trace("status=push-ff-disabled account_id={}", userPushNotification.getAccountId());
+            return;
+        }
 
         final Optional<HelloPushMessage> helloPushMessage = helloPushMessageGenerator.generate(userPushNotification);
         if(!helloPushMessage.isPresent()) {

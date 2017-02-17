@@ -16,6 +16,8 @@ import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
+import com.hello.suripu.core.db.AccountDAO;
+import com.hello.suripu.core.db.AccountDAOImpl;
 import com.hello.suripu.core.db.AppStatsDAO;
 import com.hello.suripu.core.db.AppStatsDAODynamoDB;
 import com.hello.suripu.core.db.FeatureStore;
@@ -80,7 +82,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
         final DBI commonDBI = factory.build(environment, configuration.getCommonDB(), "postgresql-common");
 
         commonDBI.registerArgumentFactory(new JodaArgumentFactory());
-
+        final AccountDAO accountDAO = commonDBI.onDemand(AccountDAOImpl.class);
 
         final ImmutableMap<DynamoDBTableName, String> tableNames = configuration.dynamoDBConfiguration().tables();
 
@@ -129,6 +131,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 .withArns(configuration.getPushNotificationsConfiguration().getArns())
                 .withAnalytics(analytics)
                 .withActiveHours(configuration.getActiveHours())
+                .withAccountDAO(accountDAO)
                 .build();
 
         final HelloPushMessageGenerator pushMessageGenerator = new HelloPushMessageGenerator();

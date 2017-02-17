@@ -93,9 +93,10 @@ push_notifications:
   table_name: prod_notifications
 
 active_hours:
+  - 16
+  - 17
   - 18
   - 19
-  - 20
 
 segment_write_key: UiFCuqdEpi6STaMCx3bo70Hii0XvWnOK
 

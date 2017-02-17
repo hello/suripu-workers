@@ -89,3 +89,4 @@ logging:
 
 segment_write_key: UiFCuqdEpi6STaMCx3bo70Hii0XvWnOK
 sqs_queue_sleep_score_push: https://sqs.us-east-1.amazonaws.com/053216739513/prod_sleep_score_push
+motion_look_back_in_minutes: 45

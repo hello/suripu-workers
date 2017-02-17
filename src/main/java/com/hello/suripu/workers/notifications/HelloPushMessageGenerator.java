@@ -11,6 +11,10 @@ public class HelloPushMessageGenerator {
             return generateSleepScoreMessage(userPushNotification);
         }
 
+        if(userPushNotification.hasPillBatteryLow()) {
+            return generateLowBatteryMessage(userPushNotification);
+        }
+
         return Optional.absent();
     }
 
@@ -18,5 +22,10 @@ public class HelloPushMessageGenerator {
         final String nightOf = userPushNotification.getNewSleepScore().getDate().substring(0,10);
         final HelloPushMessage msg = new HelloPushMessage(String.format("Your Sleep Score for last night is %d.", userPushNotification.getNewSleepScore().getScore()), "sleep_score", nightOf );
         return Optional.of(msg);
+    }
+
+    static Optional<HelloPushMessage> generateLowBatteryMessage(final PushNotification.UserPushNotification userPushNotification) {
+        final HelloPushMessage pushMessage = new HelloPushMessage("Your Sleep Pill battery is low.", "system", "pill_battery");
+        return Optional.of(pushMessage);
     }
 }

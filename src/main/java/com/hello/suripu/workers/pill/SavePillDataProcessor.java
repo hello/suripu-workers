@@ -226,6 +226,7 @@ public class SavePillDataProcessor extends HelloBaseRecordProcessor {
                                         .setPillBatteryLow(DeviceStatus.PillBatteryLow.newBuilder()
                                                 .setBatteryPercent(batteryLevel)
                                                 .setPillId(pillId))
+                                        .setTimestamp(lastUpdated.getMillis())
                                         .build();
                                 pushNotifications.add(userPushNotification);
                             }

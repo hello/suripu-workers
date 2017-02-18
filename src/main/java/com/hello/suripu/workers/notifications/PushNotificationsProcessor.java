@@ -99,7 +99,7 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
         try {
             mobilePushNotificationProcessor.push(eventBuilder.build());
         } catch (Exception e) {
-            LOGGER.error("error=push-failed msg={}", e.getMessage());
+            LOGGER.error("error=push-failed msg={} account_id={}", e.getMessage(), userPushNotification.getAccountId());
         }
     }
 

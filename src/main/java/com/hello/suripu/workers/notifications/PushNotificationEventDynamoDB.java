@@ -212,8 +212,10 @@ public class PushNotificationEventDynamoDB extends TimeSeriesDAODynamoDB<PushNot
 
 
         int numTries = 0;
+        final String key = getRangeKeyInsert(event).getS();
+        final String tableName = getTableName(event.timestamp);
         final PutItemRequest putItemRequest = new PutItemRequest()
-                .withTableName(getTableName(event.timestamp))
+                .withTableName(tableName)
                 .withItem(toAttributeMap(event))
                 // Ensure that the item does not exist. If it exists, this throws a ConditionalCheckFailedException.
                 .withExpected(ImmutableMap.of(Attribute.TIMESTAMP_TYPE.shortName(), new ExpectedAttributeValue(false)));
@@ -227,10 +229,12 @@ public class PushNotificationEventDynamoDB extends TimeSeriesDAODynamoDB<PushNot
                 LOGGER.error("error=InternalServerErrorException account_id={}", event.accountId);
             } catch (ConditionalCheckFailedException ccfe) {
                 // The item already exists or we already have an item with this timestamp / account ID!
-                final String key = getRangeKeyInsert(event).getS();
+
                 LOGGER.warn("warn=item-already-exists account_id={} key={} timestamp={}",
                         event.accountId, key, event.timestamp);
                 return false;
+            } catch (Exception e) {
+                LOGGER.error("error={} key={} table_name={}", e.getMessage(), key, tableName);
             }
             backoff(numTries);
             numTries++;

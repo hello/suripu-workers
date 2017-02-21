@@ -1,0 +1,6 @@
+dynamodb:
+  region: us-east-1
+  default_endpoint: http://localhost:7777
+  tables:
+    push_notification_event: push_notification_event
+  endpoints: {}

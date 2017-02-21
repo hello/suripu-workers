@@ -1,0 +1,6 @@
+dynamodb:
+  region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
+  tables:
+    push_notification_event: prod_push_notification_event
+  endpoints: {}

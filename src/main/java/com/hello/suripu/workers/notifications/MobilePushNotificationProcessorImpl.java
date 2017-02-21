@@ -26,10 +26,12 @@ import com.hello.suripu.core.notifications.PushNotificationEvent;
 import com.hello.suripu.core.notifications.PushNotificationEventType;
 import com.hello.suripu.core.notifications.settings.NotificationSetting;
 import com.hello.suripu.core.notifications.settings.NotificationSettingsDAO;
+import com.hello.suripu.workers.WorkerFeatureFlipper;
 import com.librato.rollout.RolloutClient;
 import com.segment.analytics.Analytics;
 import com.segment.analytics.messages.MessageBuilder;
 import com.segment.analytics.messages.TrackMessage;
+import com.vdurmont.semver4j.Semver;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeConstants;
@@ -54,7 +56,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
     private final static Logger LOGGER = LoggerFactory.getLogger(MobilePushNotificationProcessorImpl.class);
 
     private final static String SEGMENT_TRACKNAME = "Push Notifications";
-
+    private final static String DEFAULT_APP_VERSION = "9999.9999.9999";
     private final ObjectMapper mapper;
 
     private final PushNotificationEventDynamoDB pushNotificationEventDynamoDB;
@@ -66,6 +68,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
     private final Analytics analytics;
     private final Set<Integer> activeHours;
     private final AccountDAO accountDAO;
+    private final Map<MobilePushRegistration.OS, String> minAppVersions;
 
     private MobilePushNotificationProcessorImpl(final PushNotificationEventDynamoDB pushNotificationEventDynamoDB,
                                                 final ObjectMapper mapper,
@@ -76,7 +79,8 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
                                                 final NotificationSubscriptionDAOWrapper wrapper,
                                                 final Analytics analytics,
                                                 final Set<Integer> activeHours,
-                                                final AccountDAO accountDAO) {
+                                                final AccountDAO accountDAO,
+                                                final Map<MobilePushRegistration.OS, String> minAppVersions) {
         this.pushNotificationEventDynamoDB = pushNotificationEventDynamoDB;
         this.mapper = mapper;
         this.featureFlipper = featureFlipper;
@@ -87,6 +91,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
         this.analytics = analytics;
         this.activeHours = activeHours;
         this.accountDAO = accountDAO;
+        this.minAppVersions = minAppVersions;
     }
 
     @Override
@@ -128,6 +133,11 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
                 return;
             }
 
+            if(featureFlipper.userFeatureActive(WorkerFeatureFlipper.PUSH_SYSTEM_ALERT_ENABLED, event.accountId, Collections.EMPTY_LIST)) {
+                LOGGER.debug("status=push-ff-system-alert-disabled account_id={}", event.accountId);
+                return;
+            }
+
             final DateTime nowLocal = new DateTime(event.timestamp.getMillis(), tz);
             int hourOfDay = nowLocal.getHourOfDay();
             if(!activeHours.contains(hourOfDay)) {
@@ -163,6 +173,15 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
         final List<MobilePushRegistration> toDelete = Lists.newArrayList();
 
         for (final MobilePushRegistration reg : registrations) {
+            final String minAppVersion = minAppVersions.getOrDefault(MobilePushRegistration.OS.fromString(reg.os), DEFAULT_APP_VERSION);
+            final Semver registrationAppVersion = new Semver(reg.appVersion);
+
+            if(registrationAppVersion.isLowerThan(minAppVersion)) {
+                LOGGER.debug("action=skip-send account_id={} os={} app_version={} min_app_version={}", event.accountId, reg.os, reg.appVersion, minAppVersion);
+                toDelete.add(reg);
+                continue;
+            }
+
             if(reg.endpoint.isPresent()) {
                 final MobilePushRegistration.OS os = MobilePushRegistration.OS.fromString(reg.os);
                 final Optional<String> message = makeMessage(os, pushMessage);
@@ -294,6 +313,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
         private Analytics analytics;
         private Set<Integer> activeHours = Sets.newHashSet();
         private AccountDAO accountDAO;
+        private Map<MobilePushRegistration.OS, String> minAppVersions = Maps.newHashMap();
 
         public Builder withSns(final AmazonSNS sns) {
             this.sns = sns;
@@ -356,6 +376,11 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
             return this;
         }
 
+        public Builder withMinAppVersions(@NotNull final Map<MobilePushRegistration.OS, String> minAppVersions) {
+            this.minAppVersions.putAll(minAppVersions);
+            return this;
+        }
+
         public MobilePushNotificationProcessor build() {
             checkNotNull(sns, "sns can not be null");
             checkNotNull(subscriptionDAO, "subscription can not be null");
@@ -368,7 +393,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
 
             final NotificationSubscriptionDAOWrapper wrapper = NotificationSubscriptionDAOWrapper.create(subscriptionDAO, sns, arns);
             return new MobilePushNotificationProcessorImpl(pushNotificationEventDynamoDB, mapper,
-                    featureFlipper, appStatsDAO, settingsDAO, timeZoneHistoryDAO, wrapper, analytics, activeHours, accountDAO);
+                    featureFlipper, appStatsDAO, settingsDAO, timeZoneHistoryDAO, wrapper, analytics, activeHours, accountDAO, minAppVersions);
         }
 
     }

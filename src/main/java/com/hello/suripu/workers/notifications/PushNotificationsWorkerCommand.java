@@ -132,6 +132,7 @@ public class PushNotificationsWorkerCommand extends WorkerEnvironmentCommand<Pus
                 .withAnalytics(analytics)
                 .withActiveHours(configuration.getActiveHours())
                 .withAccountDAO(accountDAO)
+                .withMinAppVersions(configuration.minAppVersions())
                 .build();
 
         final HelloPushMessageGenerator pushMessageGenerator = new HelloPushMessageGenerator();

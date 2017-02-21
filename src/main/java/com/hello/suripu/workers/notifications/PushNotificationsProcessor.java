@@ -112,6 +112,9 @@ public class PushNotificationsProcessor extends HelloBaseRecordProcessor {
             } catch (InvalidStateException | ShutdownException e) {
                 LOGGER.error("error=shutdown-failed msg={}", e.getMessage());
             }
+        } else {
+            System.exit(1);
         }
+
     }
 }

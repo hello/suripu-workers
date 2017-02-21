@@ -100,3 +100,7 @@ active_hours:
 
 segment_write_key: UiFCuqdEpi6STaMCx3bo70Hii0XvWnOK
 
+min_mobile_app_versions:
+ ios: 2.0.3
+ android: 2.0.5
+

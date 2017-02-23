@@ -265,7 +265,7 @@ public class MobilePushNotificationProcessorImpl implements MobilePushNotificati
         final Map<String, String> content = new HashMap<>();
         final Map<String, Object> appMessageMap = new HashMap<>();
 
-        content.put("hlo_title", "Sense – XXXX");
+        content.put("hlo_title", "Sense");
         content.put("hlo_body", message.body);
         content.put("hlo_type", message.target);
         content.put("hlo_detail", message.details);

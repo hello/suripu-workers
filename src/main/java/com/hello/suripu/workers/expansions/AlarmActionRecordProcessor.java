@@ -1,5 +1,9 @@
 package com.hello.suripu.workers.expansions;
 
+import com.google.common.base.Optional;
+import com.google.common.collect.Sets;
+import com.google.protobuf.InvalidProtocolBufferException;
+
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
 import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
@@ -8,9 +12,6 @@ import com.amazonaws.services.kinesis.model.Record;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
-import com.google.common.collect.Sets;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.expansions.ExpansionProtos;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.ScheduledRingTimeHistoryDAODynamoDB;
@@ -18,6 +19,16 @@ import com.hello.suripu.core.models.AlarmExpansion;
 import com.hello.suripu.core.models.ValueRange;
 import com.hello.suripu.core.speech.interfaces.Vault;
 import com.hello.suripu.workers.framework.HelloBaseRecordProcessor;
+
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import is.hello.gaibu.core.models.Expansion;
 import is.hello.gaibu.core.models.ExpansionData;
 import is.hello.gaibu.core.models.ExpansionDeviceData;
@@ -25,20 +36,11 @@ import is.hello.gaibu.core.models.ExternalToken;
 import is.hello.gaibu.core.stores.ExpansionStore;
 import is.hello.gaibu.core.stores.ExternalOAuthTokenStore;
 import is.hello.gaibu.core.stores.PersistentExpansionDataStore;
-import is.hello.gaibu.core.utils.TokenUtils;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionDataFactory;
 import is.hello.gaibu.homeauto.factories.HomeAutomationExpansionFactory;
 import is.hello.gaibu.homeauto.interfaces.HomeAutomationExpansion;
 import is.hello.gaibu.homeauto.models.AlarmActionStatus;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPool;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
@@ -250,7 +252,7 @@ public class AlarmActionRecordProcessor extends HelloBaseRecordProcessor {
 
         final ExpansionDeviceData appData = expansionDeviceDataOptional.get();
 
-        final Optional<String> decryptedTokenOptional = TokenUtils.getDecryptedExternalToken(externalTokenStore, tokenKMSVault, deviceId, expansion, false);
+        final Optional<String> decryptedTokenOptional = externalTokenStore.getDecryptedExternalToken(deviceId, expansion, false);
 
         if(!decryptedTokenOptional.isPresent()) {
             LOGGER.error("error=missing-decrypted-token sense_id={} expansion_id={}", deviceId, expansion.id);

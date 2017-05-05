@@ -25,7 +25,7 @@ public class SqsPublisher implements Publisher {
     }
 
     @Override
-    public void publish(final Long accoundId, final DeviceEvents deviceEvents) {
+    public void publish(final Long accoundId, final DeviceEvents deviceEvents, final Integer offsetMillis) {
         LOGGER.info("action=sqs-publish account_id={}", accoundId);
 
         final TimelineQueueProtos.TriggerMessage triggerMessage = TimelineQueueProtos.TriggerMessage
@@ -33,7 +33,7 @@ public class SqsPublisher implements Publisher {
                 .setMessageCreatedAt(deviceEvents.createdAt.getMillis())
                 .setAccountId(accoundId)
                 .setLookbackWindowInMinutes(lookBackInMinutes)
-                .setTargetDate(DateTimeUtil.dateToYmdString(deviceEvents.createdAt.minusDays(1)))
+                .setTargetDate(DateTimeUtil.dateToYmdString(deviceEvents.createdAt.plusMillis(offsetMillis).minusDays(1)))
                 .build();
 
         final SendMessageRequest sendMessageRequest = new SendMessageRequest()

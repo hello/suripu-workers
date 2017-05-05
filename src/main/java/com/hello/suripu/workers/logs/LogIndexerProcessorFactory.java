@@ -8,6 +8,7 @@ import com.amazonaws.services.sqs.AmazonSQSClient;
 import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
+import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
@@ -23,15 +24,18 @@ public class LogIndexerProcessorFactory implements IRecordProcessorFactory {
     private final LogIndexerWorkerConfiguration config;
     private final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory;
     private final OnBoardingLogDAO onBoardingLogDAO;
+    private final AccountDAO accountDAO;
     private final MetricRegistry metricRegistry;
     private final RingTimeHistoryReadDAO ringTimeHistoryReadDAO;
     private final MergedUserInfoDynamoDB mergedUserInfoDynamoDB;
     private final Analytics analytics;
     private final AWSCredentialsProvider credentialsProvider;
 
+
     public LogIndexerProcessorFactory(final LogIndexerWorkerConfiguration config,
                                       final AmazonDynamoDBClientFactory amazonDynamoDBClientFactory,
                                       final OnBoardingLogDAO onBoardingLogDAO,
+                                      final AccountDAO accountDAO,
                                       final MetricRegistry metricRegistry,
                                       final Analytics analytics,
                                       final RingTimeHistoryReadDAO ringTimeHistoryReadDAO,
@@ -41,6 +45,7 @@ public class LogIndexerProcessorFactory implements IRecordProcessorFactory {
         this.metricRegistry = metricRegistry;
         this.amazonDynamoDBClientFactory = amazonDynamoDBClientFactory;
         this.onBoardingLogDAO = onBoardingLogDAO;
+        this.accountDAO = accountDAO;
         this.analytics = analytics;
         this.ringTimeHistoryReadDAO = ringTimeHistoryReadDAO;
         this.mergedUserInfoDynamoDB = mergedUserInfoDynamoDB;
@@ -65,6 +70,6 @@ public class LogIndexerProcessorFactory implements IRecordProcessorFactory {
                 analytics,
                 ringTimeHistoryReadDAO,
                 mergedUserInfoDynamoDB,
-                publisher);
+                publisher, accountDAO);
     }
 }

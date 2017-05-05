@@ -10,6 +10,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.hello.suripu.api.logging.LoggingProtos;
+import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
 import com.hello.suripu.core.db.RingTimeHistoryReadDAO;
@@ -54,10 +55,11 @@ public class LogIndexerProcessor implements IRecordProcessor {
                                              final Analytics analytics,
                                              final RingTimeHistoryReadDAO ringTimeHistoryDAODynamoDB,
                                              final MergedUserInfoDynamoDB mergedUserInfoDynamoDB,
-                                             final Publisher publisher) {
+                                             final Publisher publisher,
+                                             final AccountDAO accountDAO) {
         return new LogIndexerProcessor(
                 metricRegistry,
-                new SenseStructuredLogIndexer(senseEventsDAO, analytics, ringTimeHistoryDAODynamoDB, mergedUserInfoDynamoDB, publisher),
+                new SenseStructuredLogIndexer(senseEventsDAO, analytics, ringTimeHistoryDAODynamoDB, mergedUserInfoDynamoDB, publisher, accountDAO),
                 new OnBoardingLogIndexer(onBoardingLogDAO)
         );
     }

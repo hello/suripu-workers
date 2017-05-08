@@ -5,7 +5,6 @@ import com.amazonaws.services.sqs.model.SendMessageRequest;
 import com.amazonaws.services.sqs.model.SendMessageResult;
 import com.hello.suripu.api.queue.TimelineQueueProtos;
 import com.hello.suripu.core.metrics.DeviceEvents;
-import com.hello.suripu.core.util.DateTimeUtil;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +24,7 @@ public class SqsPublisher implements Publisher {
     }
 
     @Override
-    public void publish(final Long accoundId, final DeviceEvents deviceEvents) {
+    public void publish(final Long accoundId, final DeviceEvents deviceEvents, final Integer offsetMillis) {
         LOGGER.info("action=sqs-publish account_id={}", accoundId);
 
         final TimelineQueueProtos.TriggerMessage triggerMessage = TimelineQueueProtos.TriggerMessage
@@ -33,7 +32,7 @@ public class SqsPublisher implements Publisher {
                 .setMessageCreatedAt(deviceEvents.createdAt.getMillis())
                 .setAccountId(accoundId)
                 .setLookbackWindowInMinutes(lookBackInMinutes)
-                .setTargetDate(DateTimeUtil.dateToYmdString(deviceEvents.createdAt.minusDays(1)))
+                .setTargetDate(TimeHelpers.lastNight(deviceEvents.createdAt, offsetMillis))
                 .build();
 
         final SendMessageRequest sendMessageRequest = new SendMessageRequest()

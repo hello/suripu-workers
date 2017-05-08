@@ -20,6 +20,8 @@ import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
+import com.hello.suripu.core.db.AccountDAO;
+import com.hello.suripu.core.db.AccountDAOImpl;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.MergedUserInfoDynamoDB;
 import com.hello.suripu.core.db.OnBoardingLogDAO;
@@ -139,7 +141,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         commonDBI.registerArgumentFactory(new JodaArgumentFactory());
 
         final OnBoardingLogDAO onBoardingLogDAO = commonDBI.onDemand(OnBoardingLogDAO.class);
-
+        final AccountDAO accountDAO = commonDBI.onDemand(AccountDAOImpl.class);
         final WorkerRolloutModule workerRolloutModule = new WorkerRolloutModule(featureStore, 30);
         ObjectGraphRoot.getInstance().init(workerRolloutModule);
 
@@ -157,6 +159,7 @@ public class LogIndexerWorkerCommand extends WorkerEnvironmentCommand<LogIndexer
         final IRecordProcessorFactory processorFactory = new LogIndexerProcessorFactory(configuration,
                 dynamoDBClientFactory,
                 onBoardingLogDAO,
+                accountDAO,
                 environment.metrics(),
                 analytics,
                 ringTimeHistoryDAODynamoDB,

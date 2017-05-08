@@ -1,5 +1,6 @@
 package com.hello.suripu.workers.logs;
 
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.hello.suripu.core.metrics.DeviceEvents;
 import com.segment.analytics.messages.MessageBuilder;
@@ -8,6 +9,7 @@ import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,10 +24,13 @@ public class SegmentHelpersTest {
     @Test
     public void testTagSingleUserAlarmEventButNoWithinRange() {
         final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT));
+        
+        final Map<Long, String> externalIds = Maps.newHashMap();
+        externalIds.put(1L, "abc");
+        externalIds.put(2L, "def");
 
-        final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
         final Set<Long> withAlarm = Sets.newHashSet(); // simulates out of range for alarm query
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, false);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, withAlarm, externalIds, false);
         assertThat(mbs.isEmpty(), is(true));
     }
 
@@ -33,9 +38,11 @@ public class SegmentHelpersTest {
     public void testTagSingleUserAlarmEvent() {
         final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT));
 
-        final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
+        final Map<Long, String> externalIds = Maps.newHashMap();
+        externalIds.put(1L, "abc");
+        externalIds.put(2L, "def");
         final Set<Long> withAlarm = Sets.newHashSet(1L); // simulates one account having alarm within range
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, false);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, withAlarm, externalIds, false);
         assertThat(mbs.size(), is(withAlarm.size()));
     }
 
@@ -43,9 +50,11 @@ public class SegmentHelpersTest {
     public void testTagMultipleUsersAlarmEvent() {
         final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT));
 
-        final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
+        final Map<Long, String> externalIds = Maps.newHashMap();
+        externalIds.put(1L, "abc");
+        externalIds.put(2L, "def");
         final Set<Long> withAlarm = Sets.newHashSet(1L, 2L); // simulates two accounts having an alarm within range
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, false);
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, withAlarm, externalIds, false);
         assertThat(mbs.size(), is(withAlarm.size()));
     }
 
@@ -53,10 +62,12 @@ public class SegmentHelpersTest {
     public void testTagMultipleUsersWaveAndSingleUserAlarm() {
         final DeviceEvents deviceEvents = deviceEvents(Sets.newHashSet(SegmentHelpers.ALARM_RING_EVENT, SegmentHelpers.WAVE_EVENT));
 
-        final Set<Long> pairedAccounts = Sets.newHashSet(1L,2L);
+        final Map<Long, String> externalIds = Maps.newHashMap();
+        externalIds.put(1L, "abc");
+        externalIds.put(2L, "def");
         final Set<Long> withAlarm = Sets.newHashSet(1L);
-        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, pairedAccounts, withAlarm, true);
-        assertThat(mbs.size(), is(withAlarm.size() + pairedAccounts.size()));
+        final List<MessageBuilder> mbs = SegmentHelpers.tag(deviceEvents, withAlarm, externalIds, true);
+        assertThat(mbs.size(), is(withAlarm.size() + externalIds.size()));
     }
 
 

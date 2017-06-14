@@ -13,10 +13,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.google.common.base.Optional;
-import com.hello.suripu.core.db.AccountDAO;
 import com.hello.suripu.core.db.SleepStatsDAO;
-import com.hello.suripu.core.models.Account;
 import com.hello.suripu.core.models.AggregateSleepStats;
 import com.hello.suripu.core.util.DateTimeUtil;
 import org.joda.time.DateTime;
@@ -37,14 +34,12 @@ public class ExportDataProcessor {
     
     private final AmazonS3 amazonS3;
     private final SleepStatsDAO sleepStatsDAO;
-    private final AccountDAO accountDAO;
     private final ExportDataConfiguration configuration;
     private AmazonSQS amazonSQS;
     private final ObjectMapper mapper;
 
-    public ExportDataProcessor(final AccountDAO accountDAO, final AmazonSQSBufferedAsyncClient client, final AmazonS3 amazonS3, final SleepStatsDAO sleepStatsDAO,
+    public ExportDataProcessor(final AmazonSQSBufferedAsyncClient client, final AmazonS3 amazonS3, final SleepStatsDAO sleepStatsDAO,
                                final ExportDataConfiguration configuration, final ObjectMapper objectMapper) {
-        this.accountDAO = accountDAO;
         this.amazonSQS = client;
         this.amazonS3 = amazonS3;
         this.sleepStatsDAO = sleepStatsDAO;
@@ -80,24 +75,11 @@ public class ExportDataProcessor {
 
         final String email = messageContent.getOrDefault("email", "");
         final String uuid = messageContent.getOrDefault("uuid", "");
+        final String accountId = messageContent.getOrDefault("account_id", "0");
         if(email.isEmpty() || uuid.isEmpty()) {
             LOGGER.warn("action=export msg=emtpy-params email={} uuid={}", email, uuid);
             return;
         }
-
-        /*
-        final Optional<Account> accountOptional = accountDAO.getByEmail(email);
-        if(!accountOptional.isPresent() || !accountOptional.get().id.isPresent()) {
-            LOGGER.warn("action=export msg=account-not-found email={}", email);
-            return;
-        }*/
-
-        // TODO: remove me
-        final Optional<Account> accountOptional = Optional.of(new Account.Builder()
-                .withEmail(email)
-                .withId(2350L)
-                .build()
-        );
 
         final DateTime now = DateTime.now(DateTimeZone.UTC);
         final DateTime then = now.minusMonths(configuration.lookBackMonths());
@@ -105,7 +87,7 @@ public class ExportDataProcessor {
         final String start = DateTimeUtil.dateToYmdString(then);
 
 
-        final List<AggregateSleepStats> stats = sleepStatsDAO.getBatchStats(accountOptional.get().id.get(), start, end);
+        final List<AggregateSleepStats> stats = sleepStatsDAO.getBatchStats(Long.parseLong(accountId), start, end);
         if(stats.isEmpty()) {
             LOGGER.warn("action=export msg=no-sleep-stats email={}", email);
             return;

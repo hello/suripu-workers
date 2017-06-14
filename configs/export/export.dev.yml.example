@@ -8,23 +8,6 @@ graphite:
     - io.dropwizard
     - com.hello
 
-common_db:
-  # the serviceName of your JDBC driver
-  driverClass: org.postgresql.Driver
-
-  # the username
-  user: jnorgan
-
-  # the password
-  password:
-
-  # the JDBC URL
-  url: jdbc:postgresql://localhost:5432/dump-2015-09-01
-
-  # any properties specific to your JDBC driver:
-  properties:
-    charSet: UTF-8
-
 kinesis:
   endpoint: https://kinesis.us-east-1.amazonaws.com
   streams:

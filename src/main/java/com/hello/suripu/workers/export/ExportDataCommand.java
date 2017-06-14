@@ -36,9 +36,6 @@ public class ExportDataCommand extends WorkerEnvironmentCommand<ExportDataConfig
     
     @Override
     protected void run(Environment environment, Namespace namespace, ExportDataConfiguration configuration) throws Exception {
-
-        final DBIFactory factory = new DBIFactory();
-        final DBI commonDB = factory.build(environment, configuration.getCommonDB(), "commonDB");
         
         final AWSCredentialsProvider awsCredentialsProvider = new DefaultAWSCredentialsProviderChain();
 
@@ -65,10 +62,8 @@ public class ExportDataCommand extends WorkerEnvironmentCommand<ExportDataConfig
         );
 
         final AmazonS3 amazonS3 = new AmazonS3Client(awsCredentialsProvider);
-        final AccountDAO accountDAO = commonDB.onDemand(AccountDAOImpl.class);
         
         final ExportDataProcessor exportDataProcessor = new ExportDataProcessor(
-                accountDAO,
                 client,
                 amazonS3,
                 sleepStatsDAO,

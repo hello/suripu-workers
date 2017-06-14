@@ -13,6 +13,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.MapType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.google.common.collect.Lists;
 import com.hello.suripu.core.db.SleepStatsDAO;
 import com.hello.suripu.core.models.AggregateSleepStats;
 import com.hello.suripu.core.util.DateTimeUtil;
@@ -24,6 +25,8 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +112,13 @@ public class ExportDataProcessor {
                         metadata);
                 final PutObjectResult result = amazonS3.putObject(putObjectRequest);
                 LOGGER.info("action=export computed_md5={} received_md5={} email={}", md5, result.getContentMd5(), email);
+                final Date sevenDays = DateTime.now(DateTimeZone.UTC).plusDays(7).toDate();
+                final URL signedUrl = amazonS3.generatePresignedUrl(configuration.exportBucketName(), key, sevenDays);
+                boolean emailSent = sendEmail(email, signedUrl.toExternalForm());
+                if(emailSent) {
+                    LOGGER.info("action=export msg=email-sent email={}", email);
+                }
+                
             } catch (IOException e) {
                 LOGGER.error("action=export error={}", e.getMessage());
             }
@@ -117,5 +127,42 @@ public class ExportDataProcessor {
         } catch (JsonProcessingException e) {
             LOGGER.error("action=export email={} error={}", email, e.getMessage());
         }
+    }
+
+    public static final String EMAIL_EXPORT_HTML_TEMPLATE = "<html>\n<head>\n    <title>Data export</title>\n</head>\n<body>\n    <p>Hello,</p>\n    <p>Here is a link to download your data: <a href=\"%s\">%s</a></p>\n<p>Thanks</p></body>\n</html>";
+
+
+    private Boolean sendEmail(final String emailTo, final String signedUrl) {
+
+        final String htmlMessage = String.format(EMAIL_EXPORT_HTML_TEMPLATE, signedUrl, signedUrl);
+
+        // Grrr mutable objects
+        final MandrillMessage message = new MandrillMessage();
+        message.setSubject("Your data is available for download");
+        message.setHtml(htmlMessage);
+        message.setAutoText(true);
+        message.setFromEmail("support@hello.is");
+        message.setFromName("Hello");
+
+
+        final MandrillMessage.Recipient recipient = new MandrillMessage.Recipient();
+        recipient.setEmail(emailTo);
+
+        final List<MandrillMessage.Recipient> recipients = Lists.newArrayList(recipient);
+        message.setTo(recipients);
+
+        final List<String> tags = Lists.newArrayList("export_data");
+        message.setTags(tags);
+
+        try {
+            final MandrillMessageStatus[] messageStatusReports = mandrillApi.messages().send(message, false);
+            return Boolean.TRUE;
+        } catch (MandrillApiError mandrillApiError) {
+            LOGGER.error("error=mandrill-failed-sending-email error_msg={}", mandrillApiError.getMessage());
+        } catch (IOException e) {
+            LOGGER.error("error=failed-sending-email error_msg={}", e.getMessage());
+        }
+
+        return Boolean.FALSE;
     }
 }

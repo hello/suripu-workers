@@ -45,4 +45,12 @@ public class ExportDataConfiguration extends WorkerConfiguration {
     public RedisConfiguration redisConfiguration() {
         return redisConfiguration;
     }
+
+    @Valid
+    @NotNull
+    @JsonProperty("mandrill_api_key")
+    private String mandrillApiKey = "";
+    public String mandrillApiKey() {
+        return mandrillApiKey;
+    }
 }

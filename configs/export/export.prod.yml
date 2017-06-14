@@ -17,6 +17,7 @@ app_name: not_used
 
 export_data_queue_url: https://sqs.us-east-1.amazonaws.com/053216739513/prod_export
 export_bucket_name: hello-export
+mandrill_api_key: XnAIQfmDpMYIapDWGigfwA
 
 # Logging settings.
 logging:

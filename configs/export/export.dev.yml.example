@@ -1,0 +1,62 @@
+debug: true
+metrics_enabled: false
+graphite:
+  host: carbon.hostedgraphite.com
+  api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
+  reporting_interval_in_seconds: 30
+  include_metrics:
+    - io.dropwizard
+    - com.hello
+
+common_db:
+  # the serviceName of your JDBC driver
+  driverClass: org.postgresql.Driver
+
+  # the username
+  user: jnorgan
+
+  # the password
+  password:
+
+  # the JDBC URL
+  url: jdbc:postgresql://localhost:5432/dump-2015-09-01
+
+  # any properties specific to your JDBC driver:
+  properties:
+    charSet: UTF-8
+
+kinesis:
+  endpoint: https://kinesis.us-east-1.amazonaws.com
+  streams:
+      alarm_actions : dev_alarm_actions
+
+app_name: not_used
+
+export_data_queue_url: https://sqs.us-east-1.amazonaws.com/053216739513/dev_export
+export_bucket_name: hello-dev
+
+# Logging settings.
+logging:
+  level: INFO
+  loggers:
+    com.hello.suripu.workers: DEBUG
+    com.hello.suripu.core: DEBUG
+  appenders:
+    - type: console
+    # The timezone used to format dates. HINT: USE THE DEFAULT, UTC.
+      timeZone: UTC
+
+dynamodb:
+  region: us-east-1
+  default_endpoint: http://localhost:7777
+  tables:
+    features: features
+    sleep_stats: sleep_stats
+  endpoints:
+    features: http://localhost:7777
+    sleep_stats: http://localhost:7777
+
+redis:
+  host: localhost
+  port: 6379
+

@@ -2,6 +2,7 @@ package com.hello.suripu.workers;
 
 import com.hello.suripu.workers.alarm.AlarmWorkerCommand;
 import com.hello.suripu.workers.expansions.AlarmActionWorkerCommand;
+import com.hello.suripu.workers.export.ExportDataCommand;
 import com.hello.suripu.workers.fanout.SenseStreamFanoutCommand;
 import com.hello.suripu.workers.framework.WorkerConfiguration;
 import com.hello.suripu.workers.insights.AggStatsGeneratorWorkerCommand;
@@ -43,6 +44,7 @@ public class HelloWorker extends Application<WorkerConfiguration> {
         bootstrap.addCommand(new SenseStreamFanoutCommand("sense_stream_fanout", "fanout sense stream"));
         bootstrap.addCommand(new AlarmActionWorkerCommand("alarm_actions", "expansion alarm actions"));
         bootstrap.addCommand(new SupichiWorkerCommand("supichi", "speech-timeline worker"));
+        bootstrap.addCommand(new ExportDataCommand("export", "export user data"));
     }
 
     @Override

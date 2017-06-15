@@ -11,18 +11,15 @@ import com.google.common.collect.ImmutableMap;
 import com.hello.suripu.core.ObjectGraphRoot;
 import com.hello.suripu.core.configuration.DynamoDBTableName;
 import com.hello.suripu.core.configuration.QueueName;
-import com.hello.suripu.core.db.AccountDAO;
-import com.hello.suripu.core.db.AccountDAOImpl;
 import com.hello.suripu.core.db.FeatureStore;
 import com.hello.suripu.core.db.SleepStatsDAO;
 import com.hello.suripu.core.db.SleepStatsDAODynamoDB;
 import com.hello.suripu.coredropwizard.clients.AmazonDynamoDBClientFactory;
 import com.hello.suripu.workers.framework.WorkerEnvironmentCommand;
 import com.hello.suripu.workers.framework.WorkerRolloutModule;
-import io.dropwizard.jdbi.DBIFactory;
+import com.microtripit.mandrillapp.lutung.MandrillApi;
 import io.dropwizard.setup.Environment;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,14 +59,15 @@ public class ExportDataCommand extends WorkerEnvironmentCommand<ExportDataConfig
         );
 
         final AmazonS3 amazonS3 = new AmazonS3Client(awsCredentialsProvider);
-        
+
+        final MandrillApi mandrillApi = new MandrillApi(configuration.mandrillApiKey());
         final ExportDataProcessor exportDataProcessor = new ExportDataProcessor(
                 client,
                 amazonS3,
                 sleepStatsDAO,
                 configuration,
-                environment.getObjectMapper()
-        );
+                environment.getObjectMapper(),
+                mandrillApi);
         
         // blocks
         exportDataProcessor.process();

@@ -17,6 +17,10 @@ import com.google.common.collect.Lists;
 import com.hello.suripu.core.db.SleepStatsDAO;
 import com.hello.suripu.core.models.AggregateSleepStats;
 import com.hello.suripu.core.util.DateTimeUtil;
+import com.microtripit.mandrillapp.lutung.MandrillApi;
+import com.microtripit.mandrillapp.lutung.model.MandrillApiError;
+import com.microtripit.mandrillapp.lutung.view.MandrillMessage;
+import com.microtripit.mandrillapp.lutung.view.MandrillMessageStatus;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.slf4j.Logger;
@@ -40,14 +44,17 @@ public class ExportDataProcessor {
     private final ExportDataConfiguration configuration;
     private AmazonSQS amazonSQS;
     private final ObjectMapper mapper;
+    private final MandrillApi mandrillApi;
+
 
     public ExportDataProcessor(final AmazonSQSBufferedAsyncClient client, final AmazonS3 amazonS3, final SleepStatsDAO sleepStatsDAO,
-                               final ExportDataConfiguration configuration, final ObjectMapper objectMapper) {
+                               final ExportDataConfiguration configuration, final ObjectMapper objectMapper, final MandrillApi mandrillApi) {
         this.amazonSQS = client;
         this.amazonS3 = amazonS3;
         this.sleepStatsDAO = sleepStatsDAO;
         this.configuration = configuration;
         this.mapper = objectMapper;
+        this.mandrillApi = mandrillApi;
     }
 
     public void process() throws InterruptedException {
@@ -162,7 +169,7 @@ public class ExportDataProcessor {
         } catch (IOException e) {
             LOGGER.error("error=failed-sending-email error_msg={}", e.getMessage());
         }
-
+        
         return Boolean.FALSE;
     }
 }

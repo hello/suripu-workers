@@ -1,0 +1,57 @@
+debug: true
+metrics_enabled: false
+graphite:
+  host: carbon.hostedgraphite.com
+  api_key: 7509c0ff-4db5-4cae-91ee-6e78ff13b336
+  reporting_interval_in_seconds: 30
+  include_metrics:
+    - io.dropwizard
+    - com.hello
+
+kinesis:
+  endpoint: https://kinesis.us-east-1.amazonaws.com
+  streams:
+      alarm_actions : dev_alarm_actions
+
+app_name: not_used
+
+export_data_queue_url: https://sqs.us-east-1.amazonaws.com/053216739513/dev_export
+export_bucket_name: hello-dev
+mandrill_api_key: XnAIQfmDpMYIapDWGigfwA
+
+# Logging settings.
+logging:
+  level: INFO
+  loggers:
+    com.hello.suripu.workers: INFO
+    com.hello.suripu.core: INFO
+  appenders:
+    - type: file
+      threshold: DEBUG
+      currentLogFilename: /var/log/suripu-workers/suripu-workers-export.log
+      # When the log file rotates, the archived log will be renamed to this and gzipped. The
+      # %d is replaced with the previous day (yyyy-MM-dd). Custom rolling windows can be created
+      # by passing a SimpleDateFormat-compatible format as an argument: "%d{yyyy-MM-dd-hh}".
+      archivedLogFilenamePattern: /var/log/suripu-workers/suripu-workers-export-%d{yyyy-MM-dd}.log.gz
+      # The number of archived files to keep.
+      archivedFileCount: 7
+    - type: papertrail
+      host: logs2.papertrailapp.com
+      port: 11366
+      ident: suripu-workers-export-dev
+      # timezone: UTC
+      # facility: USER
+      # sendLocalName: true
+
+dynamodb:
+  region: us-east-1
+  default_endpoint: http://dynamodb.us-east-1.amazonaws.com
+  tables:
+    features: features
+    sleep_stats: prod_sleep_stats
+  endpoints: {}
+  
+redis:
+  host: localhost
+  port: 6379
+
